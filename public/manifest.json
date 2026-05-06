@@ -1,0 +1,17 @@
+{
+    "name": "Dimsum Retro",
+    "short_name": "DimsumRetro",
+    "description": "Dimsum Premium Lezat & Terjangkau di Serang",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#e11d48",
+    "icons": [
+        {
+            "src": "/logo.png",
+            "sizes": "192x192 512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}

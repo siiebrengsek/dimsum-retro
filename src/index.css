@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply font-sans antialiased;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-secondary-700 transition-colors;
+  }
+}
+
+@keyframes flyToCart {
+  0% {
+    transform: translate(0, 0) scale(1.5) rotate(0deg);
+    opacity: 1;
+  }
+
+  50% {
+    transform: translate(calc(var(--target-x) * 0.5), calc(var(--target-y) * 0.2)) scale(1) rotate(180deg);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate(var(--target-x), var(--target-y)) scale(0.1) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+@keyframes cartPulse {
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.4);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+.fly-item {
+  position: fixed;
+  z-index: 9999;
+  width: 50px;
+  height: 50px;
+  background-size: cover;
+  background-position: center;
+  border-radius: 12px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  border: 2px solid white;
+  pointer-events: none;
+  animation: flyToCart 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+.cart-pulse {
+  animation: cartPulse 0.4s ease-out;
+}
