@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { FaUtensils, FaShoppingCart } from 'react-icons/fa';
-// import type { TbArrowBadgeRight } from 'react-icons/tb';
 import { useCart } from '../context/CartContext';
 import { getStoreStatus } from '../utils/storeStatus';
 
@@ -22,10 +21,20 @@ const dimsumImages = {
   dimsumUcapan: '/products/dimsum-ucapan.jpg',
 };
 
+type Product = {
+  name: string
+  category: string
+  description: string
+  badgeRight?: string
+  badgeLeft?: string
+  price: string
+  image: string
+}
+
 const Products = () => {
   const { addToCart } = useCart();
   const status = getStoreStatus();
-  const products = [
+  const products: Product[] = [
     { name: 'Dimsum Single', category: 'Original', description: 'Dimsum kukus isi 5pcs dengan toping mix', badgeRight: '', price: 'Rp. 15.000', image: dimsumImages.dimsumSingle },
     { name: 'Dimsum Couple', category: 'Original', description: 'Dimsum kukus isi 12pcs dengan toping mix', badgeRight: 'Best Seller', price: 'Rp. 36.000', image: dimsumImages.dimsumCouple },
     { name: 'Dimsum Family', category: 'Original', description: 'Dimsum kukus isi 20pcs dengan toping mix', badgeRight: 'Best Seller', price: 'Rp. 36.000', image: dimsumImages.dimsumFamily },
@@ -40,7 +49,6 @@ const Products = () => {
     { name: 'Chili Oil', category: 'Toping', description: 'Sambal pedas khas dimsum', badgeRight: 'Best Seller', price: 'Rp. 3.000', image: dimsumImages.chiliOil },
     { name: 'Saus Belibis 1KG', category: 'Toping', description: 'Saus Sambal untuk cemilan', badgeRight: 'New', price: 'Rp. 21.000', image: dimsumImages.sausBelibis },
     { name: 'Dimsum Mentai Ucapan', category: 'New Arival', description: 'Dimsum dengan saus mentai untuk acara', badgeRight: 'New', price: 'Rp. 110.000', image: dimsumImages.dimsumUcapan },
-
   ];
 
   const categories = ['Semua', 'Original', 'Dimsum Mentai', 'New Arival', 'Toping'];
@@ -50,7 +58,7 @@ const Products = () => {
     ? products
     : products.filter(product => product.category === selectedCategory);
 
-  const handleAddToCart = (e: React.MouseEvent, product: any) => {
+  const handleAddToCart = (e: React.MouseEvent, product: Product) => {
     addToCart({
       name: product.name,
       price: product.price,
@@ -100,7 +108,7 @@ const Products = () => {
         </div>
 
         {/* Category Filter */}
-        <div className="flex flex-wrap justify-center gap-4 mb-12">
+        <div className="sticky top-0 z-10 bg-gray-50 py-4 flex flex-wrap justify-center gap-4 mb-4">
           {categories.map((category) => (
             <button
               key={category}
@@ -118,7 +126,7 @@ const Products = () => {
         {/* Products Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredProducts.map((product, index) => (
-            <div key={index} className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
+            <div key={product.name} className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
               <div className="relative">
                 <div className="aspect-square bg-white flex items-center justify-center overflow-hidden group">
                   {product.image ? (
@@ -145,7 +153,6 @@ const Products = () => {
               </div>
               <div className="p-6">
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">{product.name}</h3>
-                {/* <p className="text-gray-600 mb-2">{product.category}</p> */}
                 <p className="text-sm text-gray-500 mb-3">{product.description}</p>
                 <p className="text-2xl font-bold text-primary-600 mb-4">{product.price}</p>
                 <div className="space-y-2">
@@ -156,9 +163,6 @@ const Products = () => {
                     <FaShoppingCart className="text-xs" />
                     Tambah ke Keranjang
                   </button>
-                  {/* <button className="w-full border border-primary-600 text-primary-600 hover:bg-primary-50 px-4 py-2 rounded-lg font-semibold transition-colors text-sm">
-                    Pesan Sekarang
-                  </button> */}
                 </div>
               </div>
             </div>
