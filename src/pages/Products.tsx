@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { FaUtensils, FaShoppingCart } from 'react-icons/fa';
+import { useSearchParams } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { getStoreStatus } from '../utils/storeStatus';
 
@@ -52,7 +53,8 @@ const Products = () => {
   ];
 
   const categories = ['Semua', 'Original', 'Dimsum Mentai', 'New Arival', 'Toping'];
-  const [selectedCategory, setSelectedCategory] = useState('Semua');
+  const [searchParams] = useSearchParams();
+  const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || 'Semua');
 
   const filteredProducts = selectedCategory === 'Semua'
     ? products

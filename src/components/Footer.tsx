@@ -38,12 +38,12 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
-                <Link to="/products" className="text-gray-400 hover:text-white transition-colors">
+                <Link to="/products?category=Dimsum+Mentai" className="text-gray-400 hover:text-white transition-colors">
                   Dimsum Mentai
                 </Link>
               </li>
               <li>
-                <Link to="/products" className="text-gray-400 hover:text-white transition-colors">
+                <Link to="/products?category=Toping" className="text-gray-400 hover:text-white transition-colors">
                   Chili Oil
                 </Link>
               </li>
