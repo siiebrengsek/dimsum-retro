@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { FaUtensils, FaShoppingCart } from 'react-icons/fa';
 import { useSearchParams } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
@@ -53,8 +52,8 @@ const Products = () => {
   ];
 
   const categories = ['Semua', 'Original', 'Dimsum Mentai', 'New Arival', 'Toping'];
-  const [searchParams] = useSearchParams();
-  const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || 'Semua');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedCategory = searchParams.get('category') || 'Semua';
 
   const filteredProducts = selectedCategory === 'Semua'
     ? products
@@ -119,7 +118,7 @@ const Products = () => {
             {categories.map((category) => (
               <button
                 key={category}
-                onClick={() => setSelectedCategory(category)}
+                onClick={() => setSearchParams(category === 'Semua' ? {} : { category })}
                 className={`px-6 py-2 rounded-full font-semibold transition-colors ${selectedCategory === category
                   ? 'bg-primary-600 text-white'
                   : 'bg-white text-gray-700 hover:bg-primary-100 border border-gray-300'
