@@ -1,0 +1,366 @@
+import { useState, useEffect } from 'react';
+import { supabase } from '../../lib/supabase';
+import { FaArrowLeft } from 'react-icons/fa';
+import { Link } from 'react-router-dom';
+import { getTransactions } from '../../utils/transactions';
+import type { Transaction } from '../../utils/transactions';
+
+type SaleRow = {
+    id: string;
+    payment_method: string;
+    amount: number;
+    items_json: any[];
+    staff_id: string;
+    transaction_date: string;
+    created_at: string;
+    profiles?: { username?: string; email?: string; outlet?: string } | null;
+};
+
+type StaffSummary = {
+    staffId: string;
+    name: string;
+    tunai: number;
+    gojek: number;
+    grab: number;
+    shoppe: number;
+    qris: number;
+    total: number;
+    count: number;
+};
+
+const paymentMethodMap: Record<string, string> = {
+    tunai: 'tunai',
+    gofood: 'gojek',
+    grab: 'grab',
+    shoppe: 'shoppe',
+    qris: 'qris',
+};
+
+export const SalesAnalysis = () => {
+    const [sales, setSales] = useState<SaleRow[]>([]);
+    const [localTx, setLocalTx] = useState<Transaction[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+
+    const fetchLocalSales = () => {
+        const today = new Date().toISOString().split('T')[0];
+        const all = getTransactions();
+        const todayTx = all.filter((t) => t.createdAt.startsWith(today));
+        setLocalTx(todayTx);
+    };
+
+    useEffect(() => {
+        fetchLocalSales();
+        const interval = setInterval(fetchLocalSales, 10000);
+        return () => clearInterval(interval);
+    }, []);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            setIsLoading(true);
+            try {
+                const { data, error } = await supabase
+                    .from('sales')
+                    .select('*')
+                    .eq('transaction_date', selectedDate)
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                const enriched = await Promise.all((data || []).map(async (r) => {
+                    let profile: { username?: string; email?: string; outlet?: string } | null = null;
+                    if (r.staff_id) {
+                        const { data: p } = await supabase
+                            .from('profiles')
+                            .select('username, email, outlet')
+                            .eq('id', r.staff_id)
+                            .maybeSingle();
+                        profile = p;
+                    }
+                    return { ...r, profiles: profile };
+                }));
+
+                setSales(enriched as any);
+            } catch (error) {
+                console.error('Error fetching sales:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchData();
+        const interval = setInterval(fetchData, 30000);
+        return () => clearInterval(interval);
+    }, [selectedDate]);
+
+    const totals = {
+        tunai: 0, gojek: 0, grab: 0, shoppe: 0, qris: 0,
+    };
+    for (const s of sales) {
+        const m = s.payment_method === 'gofood' ? 'gojek' : s.payment_method;
+        if (m in totals) (totals as any)[m] += Number(s.amount || 0);
+    }
+    for (const t of localTx) {
+        const m = paymentMethodMap[t.paymentMethod] || t.paymentMethod;
+        if (m in totals) (totals as any)[m] += t.total;
+    }
+
+    const staffMap = new Map<string, StaffSummary>();
+    for (const s of sales) {
+        const sid = s.staff_id || 'unknown';
+        if (!staffMap.has(sid)) {
+            staffMap.set(sid, {
+                staffId: sid,
+                name: s.profiles?.outlet || s.profiles?.username || s.profiles?.email || sid.slice(0, 8),
+                tunai: 0, gojek: 0, grab: 0, shoppe: 0, qris: 0,
+                total: 0, count: 0,
+            });
+        }
+        const row = staffMap.get(sid)!;
+        const m = s.payment_method === 'gofood' ? 'gojek' : s.payment_method;
+        if (m in totals) (row as any)[m] += Number(s.amount || 0);
+        row.total += Number(s.amount || 0);
+        row.count += 1;
+    }
+    const localStaffEntry: StaffSummary = {
+        staffId: 'local',
+        name: 'Staff (Lokal)',
+        tunai: 0, gojek: 0, grab: 0, shoppe: 0, qris: 0,
+        total: 0, count: 0,
+    };
+    for (const t of localTx) {
+        const m = paymentMethodMap[t.paymentMethod] || t.paymentMethod;
+        if (m in localStaffEntry) (localStaffEntry as any)[m] += t.total;
+        localStaffEntry.total += t.total;
+        localStaffEntry.count += 1;
+    }
+    if (localTx.length > 0) staffMap.set('local', localStaffEntry);
+
+    const staffList = Array.from(staffMap.values());
+
+    const totalAll = Object.values(totals).reduce((a, b) => a + b, 0);
+    const todayFromLocal = localTx.reduce((sum, t) => sum + t.total, 0);
+    const totalCash = totals.tunai;
+    const totalOnline = totals.gojek + totals.grab + totals.shoppe + totals.qris;
+    const totalTransaksi = sales.length + localTx.length;
+
+    const productMap = new Map<string, { name: string; totalQty: number; totalRevenue: number }>();
+    for (const s of sales) {
+        const items = s.items_json || [];
+        for (const item of items) {
+            const existing = productMap.get(item.productName);
+            if (existing) {
+                existing.totalQty += item.quantity;
+                existing.totalRevenue += item.price * item.quantity;
+            } else {
+                productMap.set(item.productName, { name: item.productName, totalQty: item.quantity, totalRevenue: item.price * item.quantity });
+            }
+        }
+    }
+    for (const t of localTx) {
+        for (const item of t.items) {
+            const existing = productMap.get(item.productName);
+            if (existing) {
+                existing.totalQty += item.quantity;
+                existing.totalRevenue += item.price * item.quantity;
+            } else {
+                productMap.set(item.productName, { name: item.productName, totalQty: item.quantity, totalRevenue: item.price * item.quantity });
+            }
+        }
+    }
+    const products = Array.from(productMap.values()).sort((a, b) => b.totalRevenue - a.totalRevenue);
+
+    const formatRupiah = (val: number) => `Rp ${val.toLocaleString('id-ID')}`;
+
+    const paymentColumns = [
+        { key: 'tunai', label: 'Tunai', color: 'text-green-600' },
+        { key: 'gojek', label: 'Gojek', color: 'text-green-500' },
+        { key: 'grab', label: 'Grab', color: 'text-red-500' },
+        { key: 'shoppe', label: 'Shopee', color: 'text-orange-500' },
+        { key: 'qris', label: 'QRIS', color: 'text-purple-600' },
+    ];
+
+    return (
+        <div className="min-h-screen bg-gray-50 p-3 sm:p-8">
+            <div className="max-w-7xl mx-auto">
+                <div className="mb-6">
+                    <Link to="/admin/dashboard" className="text-primary-600 hover:text-primary-700 flex items-center gap-2 mb-2 font-medium text-sm">
+                        <FaArrowLeft /> Kembali ke Dashboard
+                    </Link>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Analisis Penjualan</h1>
+                    <p className="text-sm text-gray-600">Data penjualan dari sistem POS Staff — real-time</p>
+                    {localTx.length > 0 && (
+                        <p className="text-xs text-green-600 font-medium mt-1">
+                            ● {localTx.length} transaksi dari localStorage (real-time)
+                        </p>
+                    )}
+                </div>
+
+                {/* Date Filter */}
+                <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Filter Tanggal</label>
+                    <input
+                        type="date"
+                        value={selectedDate}
+                        onChange={(e) => setSelectedDate(e.target.value)}
+                        className="rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500"
+                    />
+                </div>
+
+                {/* KPI Cards */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                    <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-gray-100">
+                        <p className="text-xs text-gray-500">
+                            Omset Hari Ini
+                            {localTx.length > 0 && <span className="ml-1 inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
+                        </p>
+                        <p className="text-lg sm:text-2xl font-bold text-gray-900">{formatRupiah(totalAll)}</p>
+                        {todayFromLocal > 0 && (
+                            <p className="text-[10px] text-green-600 font-medium">Rp {(totalAll - todayFromLocal).toLocaleString('id-ID')} (DB) + Rp {todayFromLocal.toLocaleString('id-ID')} (lokal)</p>
+                        )}
+                    </div>
+                    <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-gray-100">
+                        <p className="text-xs text-gray-500">Omset Cash</p>
+                        <p className="text-lg sm:text-2xl font-bold text-green-600">{formatRupiah(totalCash)}</p>
+                        <p className="text-[10px] text-gray-400">Hanya Tunai</p>
+                    </div>
+                    <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-gray-100">
+                        <p className="text-xs text-gray-500">Omset Online</p>
+                        <p className="text-lg sm:text-2xl font-bold text-blue-600">{formatRupiah(totalOnline)}</p>
+                        <p className="text-[10px] text-gray-400">QRIS + GoFood + Grab + Shopee</p>
+                    </div>
+                    <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-gray-100">
+                        <p className="text-xs text-gray-500">Transaksi Hari Ini</p>
+                        <p className="text-lg sm:text-2xl font-bold text-gray-900">{totalTransaksi}</p>
+                    </div>
+                </div>
+
+                {/* Payment Method Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+                    {paymentColumns.map((pm) => (
+                        <div key={pm.key} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                            <p className="text-xs text-gray-500">{pm.label}</p>
+                            <p className={`${pm.color} text-sm font-bold`}>{formatRupiah((totals as any)[pm.key] || 0)}</p>
+                        </div>
+                    ))}
+                </div>
+
+                {isLoading ? (
+                    <div className="p-12 flex justify-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600" />
+                    </div>
+                ) : sales.length === 0 && localTx.length === 0 ? (
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center text-gray-500">
+                        Belum ada data penjualan untuk tanggal ini.
+                    </div>
+                ) : (
+                    <>
+                        {/* Per-Staff Table */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+                            <div className="px-4 sm:px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+                                <h3 className="font-bold text-gray-900 text-sm sm:text-base">Penjualan Per Staff</h3>
+                            </div>
+                            <div className="hidden sm:block overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead className="bg-gray-50/50">
+                                        <tr>
+                                            <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Staff</th>
+                                            {paymentColumns.map((pm) => (
+                                                <th key={pm.key} className="px-4 py-3 text-xs font-bold text-gray-500 uppercase text-right">{pm.label}</th>
+                                            ))}
+                                            <th className="px-4 py-3 text-xs font-bold text-green-700 uppercase text-right">Cash</th>
+                                            <th className="px-4 py-3 text-xs font-bold text-blue-700 uppercase text-right">Online</th>
+                                            <th className="px-4 py-3 text-xs font-bold text-gray-900 uppercase text-right">Total</th>
+                                            <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase text-right">Trx</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {staffList.map((s) => {
+                                            const cash = s.tunai;
+                                            const online = s.gojek + s.grab + s.shoppe + s.qris;
+                                            return (
+                                                <tr key={s.staffId} className="hover:bg-gray-50 transition-colors">
+                                                    <td className="px-4 py-3 font-medium text-gray-900 text-sm">{s.name}</td>
+                                                    {paymentColumns.map((pm) => (
+                                                        <td key={pm.key} className="px-4 py-3 text-right text-gray-700 text-sm">{(s as any)[pm.key] > 0 ? formatRupiah((s as any)[pm.key]) : '-'}</td>
+                                                    ))}
+                                                    <td className="px-4 py-3 text-right font-semibold text-green-600 text-sm">{formatRupiah(cash)}</td>
+                                                    <td className="px-4 py-3 text-right font-semibold text-blue-600 text-sm">{formatRupiah(online)}</td>
+                                                    <td className="px-4 py-3 text-right font-bold text-gray-900 text-sm">{formatRupiah(s.total)}</td>
+                                                    <td className="px-4 py-3 text-right text-gray-500 text-sm">{s.count}</td>
+                                                </tr>
+                                            );
+                                        })}
+                                        {/* Total Row */}
+                                        <tr className="bg-gray-50/80 font-bold">
+                                            <td className="px-4 py-3 text-gray-900 text-sm">Total Semua Staff</td>
+                                            {paymentColumns.map((pm) => (
+                                                <td key={pm.key} className="px-4 py-3 text-right text-gray-900 text-sm">{formatRupiah((totals as any)[pm.key] || 0)}</td>
+                                            ))}
+                                            <td className="px-4 py-3 text-right text-green-700 text-sm">{formatRupiah(totalCash)}</td>
+                                            <td className="px-4 py-3 text-right text-blue-700 text-sm">{formatRupiah(totalOnline)}</td>
+                                            <td className="px-4 py-3 text-right text-gray-900 text-sm">{formatRupiah(totalAll)}</td>
+                                            <td className="px-4 py-3 text-right text-gray-900 text-sm">{totalTransaksi}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            {/* Mobile */}
+                            <div className="sm:hidden divide-y divide-gray-50">
+                                {staffList.map((s) => {
+                                    const cash = s.tunai;
+                                    const online = s.gojek + s.grab + s.shoppe + s.qris;
+                                    return (
+                                        <div key={s.staffId} className="p-4">
+                                            <p className="font-bold text-gray-900 text-sm mb-2">{s.name} ({s.count} trx)</p>
+                                            <div className="grid grid-cols-2 gap-2 text-xs">
+                                                <div className="bg-green-50 rounded-lg p-2"><span className="text-gray-500">Cash</span><br /><span className="font-semibold text-green-600">{formatRupiah(cash)}</span></div>
+                                                <div className="bg-blue-50 rounded-lg p-2"><span className="text-gray-500">Online</span><br /><span className="font-semibold text-blue-600">{formatRupiah(online)}</span></div>
+                                                <div className="col-span-2 bg-gray-50 rounded-lg p-2 text-center"><span className="text-gray-500">Total</span><br /><span className="font-bold">{formatRupiah(s.total)}</span></div>
+                                            </div>
+                                            <div className="flex flex-wrap gap-1 mt-2">
+                                                {paymentColumns.filter(pm => (s as any)[pm.key] > 0).map(pm => (
+                                                    <span key={pm.key} className="text-[10px] bg-gray-100 px-2 py-0.5 rounded-full">{pm.label}: {(s as any)[pm.key].toLocaleString('id-ID')}</span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Product Sales */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                            <div className="px-4 sm:px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+                                <h3 className="font-bold text-gray-900 text-sm sm:text-base">Produk Terjual</h3>
+                            </div>
+                            {products.length === 0 ? (
+                                <div className="p-8 text-center text-gray-500 italic text-sm">Belum ada data produk.</div>
+                            ) : (
+                                <div className="hidden sm:block overflow-x-auto">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead className="bg-gray-50/50">
+                                            <tr>
+                                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Produk</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase text-right">Terjual</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase text-right">Pendapatan</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-50">
+                                            {products.map((p) => (
+                                                <tr key={p.name} className="hover:bg-gray-50">
+                                                    <td className="px-6 py-4 font-medium text-gray-900">{p.name}</td>
+                                                    <td className="px-6 py-4 text-right text-gray-600">{p.totalQty}</td>
+                                                    <td className="px-6 py-4 text-right font-semibold text-primary-600">{formatRupiah(p.totalRevenue)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    </>
+                )}
+            </div>
+        </div>
+    );
+};

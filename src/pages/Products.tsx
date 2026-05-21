@@ -114,12 +114,12 @@ const Products = () => {
       {/* Category Filter */}
       <div className="sticky top-[88px] z-10 bg-gray-50 border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex flex-wrap justify-center gap-4">
+          <div className="flex gap-2 overflow-x-auto whitespace-nowrap scrollbar-hide justify-center">
             {categories.map((category) => (
               <button
                 key={category}
                 onClick={() => setSearchParams(category === 'Semua' ? {} : { category })}
-                className={`px-6 py-2 rounded-full font-semibold transition-colors ${selectedCategory === category
+                className={`shrink-0 px-4 sm:px-6 py-2 rounded-full font-semibold transition-colors text-sm sm:text-base ${selectedCategory === category
                   ? 'bg-primary-600 text-white'
                   : 'bg-white text-gray-700 hover:bg-primary-100 border border-gray-300'
                   }`}
