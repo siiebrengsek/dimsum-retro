@@ -211,12 +211,12 @@ export const Dashboard = () => {
         )}
         {/* Left: Products */}
         <div className="flex-1 p-3 sm:p-6 overflow-y-auto pb-24 lg:pb-6">
-        <div className="flex gap-2 overflow-x-auto mb-4 pb-1 scroll-smooth snap-x snap-mandatory touch-pan-x" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <div className="sticky top-0 z-10 bg-[#0D0D0D] pt-2 pb-3 mb-3 flex flex-wrap gap-2">
           {categories.map((cat) => (
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition min-h-[40px] ${
+              className={`px-4 py-2 rounded-full text-sm font-semibold transition min-h-[40px] ${
                 selectedCategory === cat
                   ? 'bg-[#F5A623] text-white'
                   : 'bg-[#1A1A2E] text-[#888] hover:bg-[#252540]'
