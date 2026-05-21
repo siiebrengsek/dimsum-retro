@@ -678,9 +678,68 @@ export const Dashboard = () => {
                                 );
                             })
                         )}
-                    </>
-                )}
-            </main>
-        </div>
-    );
+
+                        {/* Navigation to all admin pages */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-6">
+                        <div className="px-4 sm:px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+                            <h3 className="font-bold text-gray-900 text-sm sm:text-base">Menu Halaman Admin</h3>
+                        </div>
+                        <div className="p-4 sm:p-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                            <Link to="/admin/inventory"
+                                className="flex items-center gap-3 p-3 sm:p-4 rounded-xl border border-gray-100 hover:border-primary-200 hover:bg-primary-50/50 transition-all group">
+                                <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 group-hover:bg-blue-200 transition-colors shrink-0">
+                                    <FaBox />
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-sm font-bold text-gray-900 truncate">Inventory</p>
+                                    <p className="text-[10px] text-gray-400">Bahan Baku</p>
+                                </div>
+                            </Link>
+                            <Link to="/admin/stock"
+                                className="flex items-center gap-3 p-3 sm:p-4 rounded-xl border border-gray-100 hover:border-primary-200 hover:bg-primary-50/50 transition-all group">
+                                <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center text-green-600 group-hover:bg-green-200 transition-colors shrink-0">
+                                    <FaWarehouse />
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-sm font-bold text-gray-900 truncate">Stock Dimsum</p>
+                                    <p className="text-[10px] text-gray-400">Produk & Laporan Staff</p>
+                                </div>
+                            </Link>
+                            <Link to="/admin/sales"
+                                className="flex items-center gap-3 p-3 sm:p-4 rounded-xl border border-gray-100 hover:border-primary-200 hover:bg-primary-50/50 transition-all group">
+                                <div className="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center text-yellow-600 group-hover:bg-yellow-200 transition-colors shrink-0">
+                                    <FaHistory />
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-sm font-bold text-gray-900 truncate">Sales Analysis</p>
+                                    <p className="text-[10px] text-gray-400">Penjualan Per Staff</p>
+                                </div>
+                            </Link>
+                            <Link to="/admin/stock-history"
+                                className="flex items-center gap-3 p-3 sm:p-4 rounded-xl border border-gray-100 hover:border-primary-200 hover:bg-primary-50/50 transition-all group">
+                                <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center text-orange-600 group-hover:bg-orange-200 transition-colors shrink-0">
+                                    <FaHistory />
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-sm font-bold text-gray-900 truncate">Stock History</p>
+                                    <p className="text-[10px] text-gray-400">Packaging Staff</p>
+                                </div>
+                            </Link>
+                            <Link to="/admin/staff"
+                                className="flex items-center gap-3 p-3 sm:p-4 rounded-xl border border-gray-100 hover:border-primary-200 hover:bg-primary-50/50 transition-all group">
+                                <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600 group-hover:bg-purple-200 transition-colors shrink-0">
+                                    <FaUsers />
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-sm font-bold text-gray-900 truncate">Staff Mgmt</p>
+                                    <p className="text-[10px] text-gray-400">Atur Profil Staff</p>
+                                </div>
+                            </Link>
+                        </div>
+                    </div>
+                </>
+            )}
+        </main>
+    </div>
+);
 };
