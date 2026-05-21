@@ -5,6 +5,7 @@ import { saveTransaction } from '../../utils/transactions';
 import { supabase } from '../../lib/supabase';
 import { addToQueue } from '../../utils/offlineQueue';
 import { AlertModal } from '../../components/AlertModal';
+import { getTodayDate } from '../../utils/dateUtils';
 
 const dimsumImages = {
   dimsumSingle: '/products/dimsum-single.jpg',
@@ -21,6 +22,7 @@ const dimsumImages = {
   chiliOil: '/products/chili-oil.jpg',
   sausBelibis: '/products/saus-belibis.jpg',
   dimsumUcapan: '/products/dimsum-ucapan.jpg',
+  tehPoci: '/products/teh-poci.jpg',
 };
 
 type Product = {
@@ -34,8 +36,10 @@ type Product = {
 }
 
 const products: Product[] = [
-  { name: 'Dimsum Single', category: 'Original', description: 'Dimsum kukus isi 5pcs dengan toping mix', badgeRight: '', price: 'Rp. 15.000', image: dimsumImages.dimsumSingle },
-  { name: 'Dimsum Couple', category: 'Original', description: 'Dimsum kukus isi 12pcs dengan toping mix', badgeRight: 'Best Seller', price: 'Rp. 36.000', image: dimsumImages.dimsumCouple },
+  { name: 'Dimsum  1pcs', category: 'Original', description: 'Dimsum kukus isi 5pcs dengan toping mix', badgeRight: '', price: 'Rp. 3.000', image: dimsumImages.dimsumSingle },
+  { name: 'Dimsum  3pcs', category: 'Original', description: 'Dimsum kukus isi 5pcs dengan toping mix', badgeRight: '', price: 'Rp. 9.000', image: dimsumImages.dimsumSingle },
+  { name: 'Dimsum  5pcs', category: 'Original', description: 'Dimsum kukus isi 5pcs dengan toping mix', badgeRight: '', price: 'Rp. 15.000', image: dimsumImages.dimsumSingle },
+  { name: 'Dimsum Couple 12pcs', category: 'Original', description: 'Dimsum kukus isi 12pcs dengan toping mix', badgeRight: 'Best Seller', price: 'Rp. 36.000', image: dimsumImages.dimsumCouple },
   { name: 'Dimsum Family', category: 'Original', description: 'Dimsum kukus isi 20pcs dengan toping mix', badgeRight: 'Best Seller', price: 'Rp. 36.000', image: dimsumImages.dimsumFamily },
   { name: 'Dimsum Brotherhood', category: 'Original', description: 'Dimsum kukus isi 24pcs dengan toping mix', badgeRight: 'Best Seller', price: 'Rp. 72.000', image: dimsumImages.dimsumBrotherhood },
   { name: 'Dimsum Mentai 4pcs', category: 'Dimsum Mentai', description: 'Dimsum Kukus dengan saus mentai', badgeRight: 'Best Seller', badgeLeft: 'Free Chili Oil', price: 'Rp. 20.0000', image: dimsumImages.dimsumMentai4pcs },
@@ -48,9 +52,11 @@ const products: Product[] = [
   { name: 'Chili Oil', category: 'Toping', description: 'Sambal pedas khas dimsum', badgeRight: 'Best Seller', price: 'Rp. 3.000', image: dimsumImages.chiliOil },
   { name: 'Saus Belibis 1KG', category: 'Toping', description: 'Saus Sambal untuk cemilan', badgeRight: 'New', price: 'Rp. 21.000', image: dimsumImages.sausBelibis },
   { name: 'Dimsum Mentai Ucapan', category: 'New Arival', description: 'Dimsum dengan saus mentai untuk acara', badgeRight: 'New', price: 'Rp. 110.000', image: dimsumImages.dimsumUcapan },
+  { name: 'Teh Poci', category: 'Es', description: 'Es teh original tanpa bahan pengawet', badgeRight: 'Fresh', price: 'Rp. 4.000', image: dimsumImages.tehPoci },
+  { name: 'Teh Poci Promo', category: 'Es', description: 'Es teh original tanpa bahan pengawet', badgeRight: 'Fresh', price: 'Rp. 10.000', image: dimsumImages.tehPoci },
 ];
 
-const categories = ['Semua', 'Original', 'Dimsum Mentai', 'New Arival', 'Toping'];
+const categories = ['Semua', 'Original', 'Dimsum Mentai', 'New Arival', 'Toping', 'Es'];
 
 type PaymentMethod = 'tunai' | 'gofood' | 'grab' | 'shoppe' | 'qris';
 
@@ -120,7 +126,7 @@ export const Dashboard = () => {
       staff_id: user?.id,
       items_json: transactionItems,
       amount: totalPriceNumeric,
-      transaction_date: new Date().toISOString().split('T')[0],
+      transaction_date: getTodayDate(),
       product_name: transactionItems.map(i => i.productName).join(', '),
     };
     try {

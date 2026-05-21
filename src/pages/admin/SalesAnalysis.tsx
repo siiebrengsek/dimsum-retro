@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { FaArrowLeft } from 'react-icons/fa';
+import { FaArrowLeft, FaChevronDown, FaChevronRight } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import { getTransactions } from '../../utils/transactions';
 import type { Transaction } from '../../utils/transactions';
+import { getTodayDate } from '../../utils/dateUtils';
 
 type SaleRow = {
     id: string;
@@ -40,20 +41,21 @@ export const SalesAnalysis = () => {
     const [sales, setSales] = useState<SaleRow[]>([]);
     const [localTx, setLocalTx] = useState<Transaction[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+    const [selectedDate, setSelectedDate] = useState(getTodayDate());
+    const [collapsedStaff, setCollapsedStaff] = useState<Set<string>>(new Set());
+    const [productSort, setProductSort] = useState<Record<string, { key: string; dir: 'asc' | 'desc' }>>({});
 
-    const fetchLocalSales = () => {
-        const today = new Date().toISOString().split('T')[0];
+    const fetchLocalSales = (date: string) => {
         const all = getTransactions();
-        const todayTx = all.filter((t) => t.createdAt.startsWith(today));
-        setLocalTx(todayTx);
+        const filtered = all.filter((t) => t.createdAt.startsWith(date));
+        setLocalTx(filtered);
     };
 
     useEffect(() => {
-        fetchLocalSales();
-        const interval = setInterval(fetchLocalSales, 10000);
+        fetchLocalSales(selectedDate);
+        const interval = setInterval(() => fetchLocalSales(selectedDate), 10000);
         return () => clearInterval(interval);
-    }, []);
+    }, [selectedDate]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -143,31 +145,39 @@ export const SalesAnalysis = () => {
     const totalOnline = totals.gojek + totals.grab + totals.shoppe + totals.qris;
     const totalTransaksi = sales.length + localTx.length;
 
-    const productMap = new Map<string, { name: string; totalQty: number; totalRevenue: number }>();
+    const perStaffProducts = new Map<string, Map<string, { name: string; totalQty: number; totalRevenue: number }>>();
+    const getStaffKey = (s: SaleRow) => s.profiles?.outlet || s.profiles?.username || s.staff_id?.slice(0, 8) || 'unknown';
     for (const s of sales) {
+        const staffKey = getStaffKey(s);
+        if (!perStaffProducts.has(staffKey)) perStaffProducts.set(staffKey, new Map());
+        const pMap = perStaffProducts.get(staffKey)!;
         const items = s.items_json || [];
         for (const item of items) {
-            const existing = productMap.get(item.productName);
+            const existing = pMap.get(item.productName);
             if (existing) {
                 existing.totalQty += item.quantity;
                 existing.totalRevenue += item.price * item.quantity;
             } else {
-                productMap.set(item.productName, { name: item.productName, totalQty: item.quantity, totalRevenue: item.price * item.quantity });
+                pMap.set(item.productName, { name: item.productName, totalQty: item.quantity, totalRevenue: item.price * item.quantity });
             }
         }
     }
-    for (const t of localTx) {
-        for (const item of t.items) {
-            const existing = productMap.get(item.productName);
-            if (existing) {
-                existing.totalQty += item.quantity;
-                existing.totalRevenue += item.price * item.quantity;
-            } else {
-                productMap.set(item.productName, { name: item.productName, totalQty: item.quantity, totalRevenue: item.price * item.quantity });
+    if (localTx.length > 0) {
+        const staffKey = 'Staff (Lokal)';
+        if (!perStaffProducts.has(staffKey)) perStaffProducts.set(staffKey, new Map());
+        const pMap = perStaffProducts.get(staffKey)!;
+        for (const t of localTx) {
+            for (const item of t.items) {
+                const existing = pMap.get(item.productName);
+                if (existing) {
+                    existing.totalQty += item.quantity;
+                    existing.totalRevenue += item.price * item.quantity;
+                } else {
+                    pMap.set(item.productName, { name: item.productName, totalQty: item.quantity, totalRevenue: item.price * item.quantity });
+                }
             }
         }
     }
-    const products = Array.from(productMap.values()).sort((a, b) => b.totalRevenue - a.totalRevenue);
 
     const formatRupiah = (val: number) => `Rp ${val.toLocaleString('id-ID')}`;
 
@@ -328,36 +338,95 @@ export const SalesAnalysis = () => {
                             </div>
                         </div>
 
-                        {/* Product Sales */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                            <div className="px-4 sm:px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-                                <h3 className="font-bold text-gray-900 text-sm sm:text-base">Produk Terjual</h3>
-                            </div>
-                            {products.length === 0 ? (
-                                <div className="p-8 text-center text-gray-500 italic text-sm">Belum ada data produk.</div>
-                            ) : (
-                                <div className="hidden sm:block overflow-x-auto">
-                                    <table className="w-full text-left border-collapse">
-                                        <thead className="bg-gray-50/50">
-                                            <tr>
-                                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Produk</th>
-                                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase text-right">Terjual</th>
-                                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase text-right">Pendapatan</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-50">
-                                            {products.map((p) => (
-                                                <tr key={p.name} className="hover:bg-gray-50">
-                                                    <td className="px-6 py-4 font-medium text-gray-900">{p.name}</td>
-                                                    <td className="px-6 py-4 text-right text-gray-600">{p.totalQty}</td>
-                                                    <td className="px-6 py-4 text-right font-semibold text-primary-600">{formatRupiah(p.totalRevenue)}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
-                        </div>
+                        {/* Product Sales per Staff */}
+                        {perStaffProducts.size === 0 ? (
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center text-gray-500 italic text-sm">Belum ada data produk.</div>
+                        ) : (
+                            Array.from(perStaffProducts.entries()).map(([staffKey, pMap]) => {
+                                const sortState = productSort[staffKey] || { key: '', dir: 'asc' };
+                                let products = Array.from(pMap.values());
+                                if (sortState.key === 'name') {
+                                    products.sort((a, b) => sortState.dir === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name));
+                                } else if (sortState.key === 'qty') {
+                                    products.sort((a, b) => sortState.dir === 'asc' ? a.totalQty - b.totalQty : b.totalQty - a.totalQty);
+                                } else {
+                                    products.sort((a, b) => b.totalRevenue - a.totalRevenue);
+                                }
+                                const staffTotal = products.reduce((sum, p) => sum + p.totalRevenue, 0);
+                                const isCollapsed = collapsedStaff.has(staffKey);
+
+                                const toggleSort = (key: string) => {
+                                    setProductSort(prev => {
+                                        const current = prev[staffKey];
+                                        if (current?.key === key) {
+                                            return { ...prev, [staffKey]: { key, dir: current.dir === 'asc' ? 'desc' : 'asc' } };
+                                        }
+                                        return { ...prev, [staffKey]: { key, dir: 'asc' } };
+                                    });
+                                };
+
+                                const sortIcon = (key: string) => {
+                                    if (sortState.key !== key) return '';
+                                    return sortState.dir === 'asc' ? ' ↑' : ' ↓';
+                                };
+
+                                return (
+                                    <div key={staffKey} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4">
+                                        <button
+                                            onClick={() => setCollapsedStaff(prev => {
+                                                const next = new Set(prev);
+                                                if (next.has(staffKey)) next.delete(staffKey);
+                                                else next.add(staffKey);
+                                                return next;
+                                            })}
+                                            className="w-full px-4 sm:px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center hover:bg-gray-100/50 transition-colors cursor-pointer text-left"
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                {isCollapsed ? <FaChevronRight className="text-gray-400 text-xs" /> : <FaChevronDown className="text-gray-400 text-xs" />}
+                                                <h3 className="font-bold text-gray-900 text-sm sm:text-base">Produk Terjual — {staffKey}</h3>
+                                            </div>
+                                            <span className="text-xs text-gray-500 font-medium">{formatRupiah(staffTotal)}</span>
+                                        </button>
+                                        {!isCollapsed && (
+                                            <>
+                                                <div className="hidden sm:block overflow-x-auto">
+                                                    <table className="w-full text-left border-collapse">
+                                                        <thead className="bg-gray-50/50">
+                                                            <tr>
+                                                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase cursor-pointer select-none hover:text-primary-600 transition-colors" onClick={() => toggleSort('name')}>
+                                                                    Produk<span className="text-primary-500">{sortIcon('name')}</span>
+                                                                </th>
+                                                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase text-right cursor-pointer select-none hover:text-primary-600 transition-colors" onClick={() => toggleSort('qty')}>
+                                                                    Terjual<span className="text-primary-500">{sortIcon('qty')}</span>
+                                                                </th>
+                                                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase text-right">Pendapatan</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-gray-50">
+                                                            {products.map((p) => (
+                                                                <tr key={p.name} className="hover:bg-gray-50">
+                                                                    <td className="px-6 py-4 font-medium text-gray-900">{p.name}</td>
+                                                                    <td className="px-6 py-4 text-right text-gray-600">{p.totalQty}</td>
+                                                                    <td className="px-6 py-4 text-right font-semibold text-primary-600">{formatRupiah(p.totalRevenue)}</td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                                <div className="sm:hidden divide-y divide-gray-50">
+                                                    {products.map((p) => (
+                                                        <div key={p.name} className="px-4 py-3 flex justify-between items-center">
+                                                            <span className="text-sm font-medium text-gray-900">{p.name}</span>
+                                                            <span className="text-sm text-gray-600">{p.totalQty}x <span className="text-primary-600 font-semibold">{formatRupiah(p.totalRevenue)}</span></span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                );
+                            })
+                        )}
                     </>
                 )}
             </div>

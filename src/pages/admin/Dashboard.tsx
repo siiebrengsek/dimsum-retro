@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../stores/auth.store';
 import { FaSignOutAlt, FaWarehouse, FaBox, FaClipboardList, FaUsers, FaHistory } from 'react-icons/fa';
 import { getTransactions } from '../../utils/transactions';
+import { getTodayDate } from '../../utils/dateUtils';
 
 export const Dashboard = () => {
     const [counts, setCounts] = useState({
@@ -13,20 +14,19 @@ export const Dashboard = () => {
         todaySales: 0,
     });
     const [isLoading, setIsLoading] = useState(true);
+    const [selectedDate, setSelectedDate] = useState(getTodayDate());
 
     const profile = useAuthStore((s) => s.profile);
     const signOut = useAuthStore((s) => s.signOut);
 
-    const fetchLocal = () => {
-        const today = new Date().toISOString().split('T')[0];
+    const fetchLocal = (date: string) => {
         const all = getTransactions();
-        return all.filter((t) => t.createdAt.startsWith(today)).reduce((sum, t) => sum + t.total, 0);
+        return all.filter((t) => t.createdAt.startsWith(date)).reduce((sum, t) => sum + t.total, 0);
     };
 
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                const today = new Date().toISOString().split('T')[0];
                 const [
                     { count: barangCount },
                     { count: dimsumCount },
@@ -36,11 +36,11 @@ export const Dashboard = () => {
                     supabase.from('inventory').select('*', { count: 'exact', head: true }),
                     supabase.from('products').select('*', { count: 'exact', head: true }),
                     supabase.from('profiles').select('*', { count: 'exact', head: true }),
-                    supabase.from('sales').select('amount').eq('transaction_date', today)
+                    supabase.from('sales').select('amount').eq('transaction_date', selectedDate)
                 ]);
 
                 const todayDb = todaySalesData?.reduce((acc, curr) => acc + (curr.amount || 0), 0) || 0;
-                const todayLocal = fetchLocal();
+                const todayLocal = fetchLocal(selectedDate);
                 const todayTotal = todayDb + todayLocal;
 
                 setCounts({
@@ -59,7 +59,7 @@ export const Dashboard = () => {
         fetchStats();
         const interval = setInterval(fetchStats, 30000);
         return () => clearInterval(interval);
-    }, []);
+    }, [selectedDate]);
 
     const formatPrice = (price: number) => {
         return new Intl.NumberFormat('id-ID', {
@@ -72,7 +72,7 @@ export const Dashboard = () => {
     const stats = [
         { name: 'Stock Inventory', value: counts.barang.toString(), icon: FaBox, color: 'bg-blue-500', link: '/admin/inventory' },
         { name: 'Stock Dimsum', value: counts.dimsum.toString(), icon: FaWarehouse, color: 'bg-blue-600', link: '/admin/stock' },
-        { name: 'Omset Hari Ini', value: formatPrice(counts.todaySales), icon: FaClipboardList, color: 'bg-green-500', link: '/admin/sales' },
+        { name: `Omset ${selectedDate === getTodayDate() ? 'Hari Ini' : selectedDate}`, value: formatPrice(counts.todaySales), icon: FaClipboardList, color: 'bg-green-500', link: '/admin/sales' },
         { name: 'Active Staff', value: counts.staff.toString(), icon: FaUsers, color: 'bg-purple-500', link: '/admin/staff' },
         { name: 'Pemakaian Barang', value: 'Packaging', icon: FaHistory, color: 'bg-orange-500', link: '/admin/stock-history' },
     ];
@@ -105,8 +105,21 @@ export const Dashboard = () => {
 
             <main className="max-w-7xl mx-auto py-6 sm:py-8 px-3 sm:px-6 lg:px-8">
                 <div className="mb-6 sm:mb-8">
-                    <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Warehouse Overview</h1>
-                    <p className="text-sm sm:text-base text-gray-600">Welcome back to the management dashboard.</p>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
+                            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Warehouse Overview</h1>
+                            <p className="text-sm sm:text-base text-gray-600">Welcome back to the management dashboard.</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                            <label className="text-xs text-gray-500 font-medium">Tanggal:</label>
+                            <input
+                                type="date"
+                                value={selectedDate}
+                                onChange={(e) => setSelectedDate(e.target.value)}
+                                className="rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500 text-sm py-1.5"
+                            />
+                        </div>
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">

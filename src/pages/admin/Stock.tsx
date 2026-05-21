@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { FaBox, FaPlus, FaTrash, FaEdit, FaArrowLeft, FaTimes, FaFileAlt } from 'react-icons/fa';
+import { useAuthStore } from '../../stores/auth.store';
+import { FaBox, FaPlus, FaTrash, FaEdit, FaArrowLeft, FaTimes, FaFileAlt, FaHistory, FaTruck, FaMinusCircle } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
+import { getTodayDate } from '../../utils/dateUtils';
 
 type Product = {
     id: string;
@@ -10,6 +12,19 @@ type Product = {
     price: string;
     description: string;
     image: string;
+    stock: number;
+};
+
+type StockMutation = {
+    id: number;
+    product_id: number;
+    type: 'barang_masuk' | 'terjual';
+    quantity: number;
+    stock_before: number;
+    stock_after: number;
+    note: string | null;
+    created_by: string | null;
+    created_at: string;
 };
 
 type StockReport = {
@@ -21,7 +36,7 @@ type StockReport = {
     reported_by: string;
     report_date: string;
     created_at: string;
-    profiles?: { username?: string } | null;
+    profiles?: { outlet?: string } | null;
 };
 
 export const Stock = () => {
@@ -40,6 +55,13 @@ export const Stock = () => {
 
     const [reports, setReports] = useState<StockReport[]>([]);
     const [isReportsLoading, setIsReportsLoading] = useState(true);
+    const [selectedDate, setSelectedDate] = useState(getTodayDate());
+
+    const [mutations, setMutations] = useState<StockMutation[]>([]);
+    const [isMutationsLoading, setIsMutationsLoading] = useState(true);
+    const [isBarangMasukOpen, setIsBarangMasukOpen] = useState(false);
+    const [barangMasukForm, setBarangMasukForm] = useState({ product_id: '', quantity: 0, note: '' });
+    const [isBarangMasukSubmitting, setIsBarangMasukSubmitting] = useState(false);
 
     const fetchProducts = async () => {
         setIsLoading(true);
@@ -64,22 +86,23 @@ export const Stock = () => {
             const { data, error } = await supabase
                 .from('stock_reports')
                 .select('*')
+                .eq('report_date', selectedDate)
                 .order('report_date', { ascending: false })
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
 
             const enriched = await Promise.all((data || []).map(async (r) => {
-                let username: string | null = null;
+                let outlet: string | null = null;
                 if (r.reported_by) {
                     const { data: profile } = await supabase
                         .from('profiles')
-                        .select('username')
+                        .select('outlet')
                         .eq('id', r.reported_by)
                         .maybeSingle();
-                    username = profile?.username || null;
+                    outlet = profile?.outlet || null;
                 }
-                return { ...r, profiles: username ? { username } : null };
+                return { ...r, profiles: outlet ? { outlet } : null };
             }));
 
             setReports(enriched as any);
@@ -90,12 +113,76 @@ export const Stock = () => {
         }
     };
 
+    const fetchMutations = async () => {
+        setIsMutationsLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('stock_mutations')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(50);
+            if (error) throw error;
+            setMutations(data || []);
+        } catch (error) {
+            console.error('Error fetching mutations:', error);
+        } finally {
+            setIsMutationsLoading(false);
+        }
+    };
+
+    const handleBarangMasuk = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsBarangMasukSubmitting(true);
+        try {
+            const product = products.find(p => String(p.id) === barangMasukForm.product_id);
+            if (!product) throw new Error('Product not found');
+            const qty = Number(barangMasukForm.quantity);
+            const stockBefore = Number(product.stock) || 0;
+            const stockAfter = stockBefore + qty;
+
+            const { error: updateError } = await supabase
+                .from('products')
+                .update({ stock: stockAfter })
+                .eq('id', barangMasukForm.product_id);
+            if (updateError) throw updateError;
+
+            const { error: mutationError } = await supabase
+                .from('stock_mutations')
+                .insert([{
+                    product_id: Number(barangMasukForm.product_id),
+                    type: 'barang_masuk',
+                    quantity: qty,
+                    stock_before: stockBefore,
+                    stock_after: stockAfter,
+                    note: barangMasukForm.note || null,
+                    created_by: user?.id,
+                }]);
+            if (mutationError) throw mutationError;
+
+            setIsBarangMasukOpen(false);
+            setBarangMasukForm({ product_id: '', quantity: 0, note: '' });
+            fetchProducts();
+            fetchMutations();
+        } catch (error: any) {
+            console.error('Error adding barang masuk:', error);
+            alert(`Gagal menambah stok: ${error.message || 'Error tidak diketahui'}`);
+        } finally {
+            setIsBarangMasukSubmitting(false);
+        }
+    };
+
+    const user = useAuthStore((s) => s.user);
+
     useEffect(() => {
         fetchProducts();
-        fetchReports();
-        const interval = setInterval(() => { fetchProducts(); fetchReports(); }, 30000);
-        return () => clearInterval(interval);
+        fetchMutations();
     }, []);
+
+    useEffect(() => {
+        fetchReports();
+        const interval = setInterval(fetchReports, 30000);
+        return () => clearInterval(interval);
+    }, [selectedDate]);
 
     const handleSaveProduct = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -178,12 +265,20 @@ export const Stock = () => {
                         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Stock Dimsum</h1>
                         <p className="text-sm sm:text-base text-gray-600">Manajemen varian produk dimsum siap jual</p>
                     </div>
-                    <button
-                        onClick={() => setIsModalOpen(true)}
-                        className="btn-primary flex items-center gap-2 text-sm sm:text-base w-full sm:w-auto justify-center"
-                    >
-                        <FaPlus /> Tambah Dimsum
-                    </button>
+                    <div className="flex gap-2 w-full sm:w-auto">
+                        <button
+                            onClick={() => setIsBarangMasukOpen(true)}
+                            className="btn-secondary flex items-center gap-2 text-sm sm:text-base w-full sm:w-auto justify-center"
+                        >
+                            <FaTruck /> Barang Masuk
+                        </button>
+                        <button
+                            onClick={() => setIsModalOpen(true)}
+                            className="btn-primary flex items-center gap-2 text-sm sm:text-base w-full sm:w-auto justify-center"
+                        >
+                            <FaPlus /> Tambah Dimsum
+                        </button>
+                    </div>
                 </div>
 
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-8">
@@ -204,7 +299,7 @@ export const Stock = () => {
                                         <tr>
                                             <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Produk</th>
                                             <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Kategori</th>
-                                            <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Harga</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Stok</th>
                                             <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Aksi</th>
                                         </tr>
                                     </thead>
@@ -225,7 +320,11 @@ export const Stock = () => {
                                                         {product.category}
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-4 font-semibold text-gray-900">{product.price}</td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <span className={`font-bold ${(product.stock || 0) <= 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                                        {product.stock || 0}
+                                                    </span>
+                                                </td>
                                                 <td className="px-6 py-4 text-right">
                                                     <div className="flex justify-end gap-2">
                                                         <button onClick={() => handleEditClick(product)} className="p-2 text-gray-400 hover:text-primary-600 transition-colors">
@@ -254,7 +353,9 @@ export const Stock = () => {
                                         </div>
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-2">
-                                                <span className="font-semibold text-gray-900 text-sm">{product.price}</span>
+                                                <span className={`text-xs font-bold ${(product.stock || 0) <= 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                                    Stok: {product.stock || 0}
+                                                </span>
                                                 <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800 border border-primary-200">
                                                     {product.category}
                                                 </span>
@@ -276,9 +377,20 @@ export const Stock = () => {
                 </div>
 
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
-                        <FaFileAlt className="text-primary-600" />
-                        <h2 className="font-bold text-gray-900 text-lg">Laporan dari Staff</h2>
+                    <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <FaFileAlt className="text-primary-600" />
+                            <h2 className="font-bold text-gray-900 text-lg">Laporan dari Staff</h2>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs text-gray-500 font-medium hidden sm:inline">Tanggal:</label>
+                            <input
+                                type="date"
+                                value={selectedDate}
+                                onChange={(e) => setSelectedDate(e.target.value)}
+                                className="rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500 text-sm py-1.5"
+                            />
+                        </div>
                     </div>
 
                     {isReportsLoading ? (
@@ -306,7 +418,7 @@ export const Stock = () => {
                                                     <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Stok Bawaan</th>
                                                     <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Sisa</th>
                                                     <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Terjual</th>
-                                                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Staff</th>
+                                                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Outlet</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-50">
@@ -319,7 +431,7 @@ export const Stock = () => {
                                                             <span className="font-semibold text-primary-600">{report.terjual}</span>
                                                         </td>
                                                         <td className="px-6 py-3 text-sm text-gray-500">
-                                                            {report.profiles?.username || report.reported_by?.slice(0, 8) || '-'}
+                                                            {report.profiles?.outlet || '-'}
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -331,7 +443,7 @@ export const Stock = () => {
                                             <div key={report.id} className="p-4">
                                                 <div className="flex justify-between items-start mb-2">
                                                     <span className="font-bold text-gray-900 text-sm">{report.product_name}</span>
-                                                    <span className="text-xs text-gray-500">{report.profiles?.username || report.reported_by?.slice(0, 8) || '-'}</span>
+                                                    <span className="text-xs text-gray-500">{report.profiles?.outlet || '-'}</span>
                                                 </div>
                                                 <div className="grid grid-cols-3 gap-2 text-center text-sm">
                                                     <div>
@@ -355,7 +467,163 @@ export const Stock = () => {
                         </div>
                     )}
                 </div>
+
+                {/* Stock Mutation History */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-8">
+                    <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
+                        <FaHistory className="text-primary-600" />
+                        <h2 className="font-bold text-gray-900 text-lg">Riwayat Mutasi Stok</h2>
+                    </div>
+
+                    {isMutationsLoading ? (
+                        <div className="p-12 flex justify-center">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600" />
+                        </div>
+                    ) : mutations.length === 0 ? (
+                        <div className="p-12 text-center text-gray-500">
+                            <FaHistory className="mx-auto text-4xl mb-4 opacity-20" />
+                            Belum ada riwayat mutasi stok.
+                        </div>
+                    ) : (
+                        <>
+                            <div className="hidden sm:block overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead className="bg-gray-50/50 border-b border-gray-100">
+                                        <tr>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Tanggal</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Tipe</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Produk</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Jumlah</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Stok Awal</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Stok Akhir</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Catatan</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {mutations.map((m) => (
+                                            <tr key={m.id} className="hover:bg-gray-50 transition-colors">
+                                                <td className="px-6 py-4 text-sm text-gray-500">
+                                                    {new Date(m.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    {m.type === 'barang_masuk' ? (
+                                                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                                                            <FaTruck /> Barang Masuk
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
+                                                            <FaMinusCircle /> Terjual
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                                                    {products.find(p => String(p.id) === String(m.product_id))?.name || `Product #${m.product_id}`}
+                                                </td>
+                                                <td className="px-6 py-4 text-right text-sm font-bold text-gray-900">{m.quantity}</td>
+                                                <td className="px-6 py-4 text-right text-sm text-gray-500">{m.stock_before}</td>
+                                                <td className="px-6 py-4 text-right text-sm font-semibold text-gray-900">{m.stock_after}</td>
+                                                <td className="px-6 py-4 text-sm text-gray-500">{m.note || '-'}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div className="sm:hidden divide-y divide-gray-50">
+                                {mutations.map((m) => {
+                                    const productName = products.find(p => String(p.id) === String(m.product_id))?.name || `Product #${m.product_id}`;
+                                    return (
+                                        <div key={m.id} className="p-4">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <div>
+                                                    <span className="font-bold text-gray-900 text-sm">{productName}</span>
+                                                    <span className="text-xs text-gray-500 ml-2">
+                                                        {new Date(m.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                                                    </span>
+                                                </div>
+                                                {m.type === 'barang_masuk' ? (
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                        <FaTruck /> +{m.quantity}
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                                        <FaMinusCircle /> -{m.quantity}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="text-xs text-gray-500 flex gap-3">
+                                                <span>Stok: {m.stock_before} → {m.stock_after}</span>
+                                                {m.note && <span>Note: {m.note}</span>}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </>
+                    )}
+                </div>
             </div>
+
+            {/* Barang Masuk Modal */}
+            {isBarangMasukOpen && (
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+                        <div className="px-4 sm:px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 sticky top-0">
+                            <h3 className="font-bold text-gray-900 text-sm sm:text-base">Tambah Barang Masuk</h3>
+                            <button onClick={() => { setIsBarangMasukOpen(false); setBarangMasukForm({ product_id: '', quantity: 0, note: '' }); }} className="text-gray-400 hover:text-gray-600 p-2">
+                                <FaTimes />
+                            </button>
+                        </div>
+                        <form onSubmit={handleBarangMasuk} className="p-4 sm:p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Produk</label>
+                                <select
+                                    required
+                                    value={barangMasukForm.product_id}
+                                    onChange={(e) => setBarangMasukForm({ ...barangMasukForm, product_id: e.target.value })}
+                                    className="w-full rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500"
+                                >
+                                    <option value="">Pilih Produk</option>
+                                    {products.map((p) => (
+                                        <option key={p.id} value={p.id}>
+                                            {p.name} (Stok: {p.stock || 0})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Jumlah</label>
+                                <input
+                                    required
+                                    type="number"
+                                    min="1"
+                                    value={barangMasukForm.quantity}
+                                    onChange={(e) => setBarangMasukForm({ ...barangMasukForm, quantity: parseInt(e.target.value) || 0 })}
+                                    className="w-full rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500"
+                                    placeholder="Jumlah stok masuk"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Catatan (opsional)</label>
+                                <input
+                                    type="text"
+                                    value={barangMasukForm.note}
+                                    onChange={(e) => setBarangMasukForm({ ...barangMasukForm, note: e.target.value })}
+                                    className="w-full rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500"
+                                    placeholder="Contoh: Dari supplier, Produksi hari ini"
+                                />
+                            </div>
+                            <div className="flex gap-3 pt-4">
+                                <button type="button" onClick={() => { setIsBarangMasukOpen(false); setBarangMasukForm({ product_id: '', quantity: 0, note: '' }); }} className="flex-1 px-4 py-3 sm:py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 text-sm">
+                                    Batal
+                                </button>
+                                <button type="submit" disabled={isBarangMasukSubmitting} className="flex-1 btn-primary disabled:opacity-50 text-sm">
+                                    {isBarangMasukSubmitting ? 'Menyimpan...' : 'Simpan'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
 
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm">

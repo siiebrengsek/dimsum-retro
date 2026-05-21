@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { FaBoxes, FaPlus, FaTrash, FaEdit, FaArrowLeft, FaTimes, FaSearch, FaStore } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
+import { getTodayDate } from '../../utils/dateUtils';
 
 type Report = {
     id: number;
@@ -28,7 +29,7 @@ export const StockHistory = () => {
     const [packagingItems, setPackagingItems] = useState<PackagingItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedOutlet, setSelectedOutlet] = useState<string | null>(null);
-    const [selectedDate, setSelectedDate] = useState<string>('');
+    const [selectedDate, setSelectedDate] = useState<string>(getTodayDate());
     const [searchQuery, setSearchQuery] = useState('');
 
     const dedupeReports = (items: Report[]): Report[] => {

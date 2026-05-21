@@ -4,6 +4,7 @@ import { useAuthStore } from '../../stores/auth.store';
 import { ConfirmModal } from '../../components/ConfirmModal';
 import { AlertModal } from '../../components/AlertModal';
 import { addToQueue } from '../../utils/offlineQueue';
+import { getTodayDate } from '../../utils/dateUtils';
 
 const STORAGE_KEY = 'dimsum_report_data';
 
@@ -134,7 +135,7 @@ export const ReportDimsum = () => {
 
     const processLaporan = async () => {
         setIsSubmitting(true);
-        const today = new Date().toISOString().split('T')[0];
+        const today = getTodayDate();
         const reports = products
             .filter(p => Number(stockBatas[p.id]) > 0)
             .map(p => ({
@@ -159,7 +160,17 @@ export const ReportDimsum = () => {
 
             if (error) throw error;
 
-            setAlert({ type: 'success', title: 'Berhasil!', message: 'Laporan berhasil dikirim ke Admin.' });
+            for (const r of reports) {
+                const { error: deductError } = await supabase.rpc('deduct_stock_on_report', {
+                    p_product_id: r.product_id,
+                    p_quantity: r.terjual,
+                    p_created_by: user?.id,
+                    p_note: `Laporan: ${r.product_name}`,
+                });
+                if (deductError) console.error(`Gagal potong stok untuk ${r.product_name}:`, deductError);
+            }
+
+            setAlert({ type: 'success', title: 'Berhasil!', message: 'Laporan berhasil dikirim ke Admin. Stok terpusat otomatis terpotong.' });
             setStockBatas({});
             setSisaDimsum({});
             saveLocalData({}, {});
@@ -172,7 +183,7 @@ export const ReportDimsum = () => {
     };
 
     return (
-        <div className="p-4 sm:p-6 pb-28 max-w-3xl mx-auto h-full scroll-smooth">
+        <div className="p-4 sm:p-6 pb-36 max-w-3xl mx-auto h-full scroll-smooth">
             <div className="bg-[#F5A623] bg-opacity-10 rounded-xl p-4 mb-6">
                 <h1 className="text-[#F5A623] font-bold text-lg">Laporan Harian (Sisa Dimsum)</h1>
             </div>

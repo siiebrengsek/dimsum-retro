@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../stores/auth.store';
+import { getTodayDate } from '../../utils/dateUtils';
 
 type SaleRow = {
     id: string;
@@ -26,7 +27,7 @@ export const AnalitikPenjualan = () => {
     useEffect(() => {
         if (!user) return;
         const fetchSales = async () => {
-            const today = new Date().toISOString().split('T')[0];
+            const today = getTodayDate();
             try {
                 const { data, error } = await supabase
                     .from('sales')

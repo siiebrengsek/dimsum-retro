@@ -4,6 +4,7 @@ import { useAuthStore } from '../../stores/auth.store';
 import { ConfirmModal } from '../../components/ConfirmModal';
 import { AlertModal } from '../../components/AlertModal';
 import { addToQueue } from '../../utils/offlineQueue';
+import { getTodayDate } from '../../utils/dateUtils';
 
 const STORAGE_KEY_HARI_INI = 'dimsum_stock_hari_ini';
 const STORAGE_KEY_SISA = 'dimsum_stock_sisa';
@@ -148,7 +149,7 @@ export const ReportStockInventory = () => {
                 staff_id: user!.id,
                 item_id: r.item_id,
                 outlet,
-                report_date: new Date().toISOString().split('T')[0],
+                report_date: getTodayDate(),
                 stock_hari_ini: r.stock_hari_ini,
                 sisa: r.sisa,
                 terpakai: r.terpakai,
@@ -169,7 +170,7 @@ export const ReportStockInventory = () => {
                 if (stockHariIniVal > 0) {
                     addToQueue('packaging_reports', 'insert', {
                         staff_id: user!.id, item_id: item.id, outlet: (profile as any)?.outlet || 'Unknown',
-                        report_date: new Date().toISOString().split('T')[0],
+                report_date: getTodayDate(),
                         stock_hari_ini: stockHariIniVal,
                         sisa: Number(sisa[item.id]) || 0,
                         terpakai: Math.max(0, stockHariIniVal - (Number(sisa[item.id]) || 0)),
@@ -185,7 +186,7 @@ export const ReportStockInventory = () => {
     const totalTerpakai = items.reduce((sum, item) => sum + getTerpakai(item.id), 0);
 
     return (
-        <div className="p-4 sm:p-6 pb-28 max-w-4xl mx-auto h-full scroll-smooth">
+        <div className="p-4 sm:p-6 pb-36 max-w-4xl mx-auto h-full scroll-smooth">
             <div className="bg-[#FF6B6B] bg-opacity-10 rounded-xl p-4 mb-6">
                 <h1 className="text-[#FF6B6B] font-bold text-lg">Stock Packaging Hari Ini</h1>
             </div>
