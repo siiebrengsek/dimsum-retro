@@ -105,12 +105,28 @@ export const Stock = () => {
                 return { ...r, profiles: outlet ? { outlet } : null };
             }));
 
-            setReports(enriched as any);
+            const deduped = dedupeReports(enriched as StockReport[]);
+            setReports(deduped);
         } catch (error) {
             console.error('Error fetching reports:', error);
         } finally {
             setIsReportsLoading(false);
         }
+    };
+
+    const dedupeReports = (items: StockReport[]): StockReport[] => {
+        const seen = new Map<string, StockReport>();
+        for (const r of items) {
+            const outlet = r.profiles?.outlet || r.reported_by;
+            const key = `${r.product_name}|${outlet}|${r.report_date}`;
+            const existing = seen.get(key);
+            if (!existing || new Date(r.created_at) > new Date(existing.created_at)) {
+                seen.set(key, r);
+            }
+        }
+        return Array.from(seen.values()).sort((a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
     };
 
     const fetchMutations = async () => {
@@ -400,7 +416,7 @@ export const Stock = () => {
                     ) : reports.length === 0 ? (
                         <div className="p-12 text-center text-gray-500">
                             <FaFileAlt className="mx-auto text-4xl mb-4 opacity-20" />
-                            Belum ada laporan dari staff.
+                            Belum ada laporan dari staff untuk tanggal ini.
                         </div>
                     ) : (
                         <div className="divide-y divide-gray-50">
@@ -408,7 +424,7 @@ export const Stock = () => {
                                 <div key={date}>
                                     <div className="px-6 py-3 bg-gray-50/50 border-b border-gray-100">
                                         <span className="text-sm font-semibold text-gray-700">Tanggal: {date}</span>
-                                        <span className="text-xs text-gray-500 ml-2">({dateReports.length} laporan)</span>
+                                        <span className="text-xs text-gray-500 ml-2">({dateReports.length} produk — menampilkan laporan terbaru per produk/outlet)</span>
                                     </div>
                                     <div className="hidden sm:block overflow-x-auto">
                                         <table className="w-full text-left border-collapse">
