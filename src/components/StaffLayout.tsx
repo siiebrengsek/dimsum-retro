@@ -51,12 +51,12 @@ export const StaffLayout = () => {
                 />
             )}
 
-            {/* Sidebar — lg: always visible, mobile: slide from right */}
+            {/* Sidebar — lg: always visible, mobile: slide from left */}
             <div className={`
-                fixed lg:relative right-0 z-40 h-full bg-[#111118] border-l border-[#1A1A2E]
+                fixed lg:relative left-0 z-40 h-full bg-[#111118] border-r border-[#1A1A2E]
                 flex flex-col pt-6 transition-transform duration-300 ease-in-out w-72
                 lg:translate-x-0
-                ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}
+                ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
             `}
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
@@ -64,7 +64,7 @@ export const StaffLayout = () => {
                 {/* Close button (mobile only) */}
                 <button
                     onClick={() => setSidebarOpen(false)}
-                    className="absolute top-4 left-4 lg:hidden text-[#888] hover:text-white text-xl p-1"
+                    className="absolute top-4 right-4 lg:hidden text-[#888] hover:text-white text-xl p-1"
                 >
                     ✕
                 </button>
@@ -130,7 +130,7 @@ export const StaffLayout = () => {
                 {/* Hamburger button (mobile only) */}
                 <button
                     onClick={() => setSidebarOpen(!sidebarOpen)}
-                    className="lg:hidden absolute top-3 right-3 z-20 w-10 h-10 rounded-xl bg-[#1A1A2E] flex items-center justify-center hover:bg-[#252540] transition text-white text-lg"
+                    className="lg:hidden absolute top-3 left-3 z-20 w-10 h-10 rounded-xl bg-[#1A1A2E] flex items-center justify-center hover:bg-[#252540] transition text-white text-lg"
                 >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
                 </button>
