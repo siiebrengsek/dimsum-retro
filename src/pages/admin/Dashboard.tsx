@@ -83,15 +83,45 @@ export const Dashboard = () => {
         try {
             const { data } = await supabase
                 .from('stock_reports')
-                .select('terjual, reported_by')
-                .eq('report_date', date);
-            const total = (data || []).reduce((sum, r) => sum + (r.terjual || 0), 0);
+                .select('*')
+                .eq('report_date', date)
+                .order('created_at', { ascending: false });
+
+            const enriched = await Promise.all((data || []).map(async (r) => {
+                let outlet: string | null = null;
+                if (r.reported_by) {
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('outlet')
+                        .eq('id', r.reported_by)
+                        .maybeSingle();
+                    outlet = profile?.outlet || null;
+                }
+                return { ...r, profiles: outlet ? { outlet } : null };
+            }));
+
+            const deduped = dedupeStockReports(enriched);
+            const total = deduped.reduce((sum, r) => sum + (r.terjual || 0), 0);
             setDimsumTerjual(total);
+
             const ids = new Set((data || []).map((r) => r.reported_by).filter(Boolean));
             setStockReporterIds(ids);
         } catch (err) {
             console.error('Error fetching stock reports:', err);
         }
+    };
+
+    const dedupeStockReports = (items: any[]): any[] => {
+        const seen = new Map<string, any>();
+        for (const r of items) {
+            const outlet = r.profiles?.outlet || r.reported_by;
+            const key = `${r.product_name}|${outlet}|${r.report_date}`;
+            const existing = seen.get(key);
+            if (!existing || new Date(r.created_at) > new Date(existing.created_at)) {
+                seen.set(key, r);
+            }
+        }
+        return Array.from(seen.values());
     };
 
     const fetchPackagingReports = async (date: string) => {

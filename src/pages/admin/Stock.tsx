@@ -200,6 +200,14 @@ export const Stock = () => {
         return () => clearInterval(interval);
     }, [selectedDate]);
 
+    useEffect(() => {
+        const interval = setInterval(() => {
+            fetchProducts();
+            fetchMutations();
+        }, 30000);
+        return () => clearInterval(interval);
+    }, []);
+
     const handleSaveProduct = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
