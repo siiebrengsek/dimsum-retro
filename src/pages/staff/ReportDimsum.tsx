@@ -183,7 +183,7 @@ export const ReportDimsum = () => {
     };
 
     return (
-        <div className="p-4 sm:p-6 pb-36 max-w-3xl mx-auto h-full scroll-smooth">
+        <div className="p-4 sm:p-6 pb-48 max-w-3xl mx-auto h-full scroll-smooth">
             <div className="bg-[#F5A623] bg-opacity-10 rounded-xl p-4 mb-6">
                 <h1 className="text-[#F5A623] font-bold text-lg">Laporan Harian (Sisa Dimsum)</h1>
             </div>
