@@ -124,7 +124,7 @@ export const ReportInventory = () => {
     };
 
     return (
-        <div className="p-4 sm:p-6 pb-48 max-w-3xl mx-auto h-full scroll-smooth">
+        <div className="p-4 sm:p-6 pb-64 max-w-3xl mx-auto min-h-full scroll-smooth">
             <div className="bg-[#FF6B6B] bg-opacity-10 rounded-xl p-4 mb-6">
                 <h1 className="text-[#FF6B6B] font-bold text-lg">Pemakaian Bahan Baku</h1>
             </div>
@@ -221,7 +221,7 @@ export const ReportInventory = () => {
                 )}
             </div>
 
-            <div className="fixed bottom-0 left-0 right-0 sm:left-72 p-4 bg-gradient-to-t from-[#0D0D0D] from-40% to-transparent pointer-events-none">
+            <div className="fixed bottom-0 left-0 right-0 sm:left-72 bg-[#0D0D0D] border-t border-[#1A1A2E] p-4 pointer-events-none">
                 <button
                     onClick={handleKirimLaporan}
                     disabled={isSubmitting || isLoading}
