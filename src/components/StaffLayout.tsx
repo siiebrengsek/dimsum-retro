@@ -8,7 +8,6 @@ export const StaffLayout = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const signOut = useAuthStore((s) => s.signOut);
-    const user = useAuthStore((s) => s.user);
     const profile = useAuthStore((s) => s.profile);
 
     const handleLogout = async () => {

@@ -134,20 +134,19 @@ export const ReportDimsum = () => {
 
     const processLaporan = async () => {
         setIsSubmitting(true);
+        const today = new Date().toISOString().split('T')[0];
+        const reports = products
+            .filter(p => Number(stockBatas[p.id]) > 0)
+            .map(p => ({
+                product_id: p.id,
+                product_name: p.name,
+                stock_bawaan: Number(stockBatas[p.id]) || 0,
+                sisa_dimsum: Number(sisaDimsum[p.id]) || 0,
+                terjual: getTerjual(p.id),
+                reported_by: user?.id,
+                report_date: today,
+            }));
         try {
-            const today = new Date().toISOString().split('T')[0];
-            const reports = products
-                .filter(p => Number(stockBatas[p.id]) > 0)
-                .map(p => ({
-                    product_id: p.id,
-                    product_name: p.name,
-                    stock_bawaan: Number(stockBatas[p.id]) || 0,
-                    sisa_dimsum: Number(sisaDimsum[p.id]) || 0,
-                    terjual: getTerjual(p.id),
-                    reported_by: user?.id,
-                    report_date: today,
-                }));
-
             if (reports.length === 0) {
                 setAlert({ type: 'info', title: 'Info', message: 'Isi Stok Bawaan terlebih dahulu.' });
                 setIsSubmitting(false);

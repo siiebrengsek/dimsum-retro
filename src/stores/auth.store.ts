@@ -103,12 +103,14 @@ export const useAuthStore = create<AuthState>((set) => ({
             if (!user) throw new Error('Gagal membuat akun.');
 
             // Try RPC insert (bypasses RLS) — silent if unavailable
-            await supabase.rpc('insert_profile', {
-                p_id: user.id, p_role: role, p_username: username, p_email: email,
-            }).catch(() =>
+            try {
+                await supabase.rpc('insert_profile', {
+                    p_id: user.id, p_role: role, p_username: username, p_email: email,
+                });
+            } catch {
                 // Fallback: direct insert (needs RLS policy) — silent if fails too
-                supabase.from('profiles').insert({ id: user.id, role }).catch(() => { })
-            );
+                try { await supabase.from('profiles').insert({ id: user.id, role }); } catch { }
+            }
 
             let profile: Profile | null = null;
             const { data: dbProfile } = await supabase

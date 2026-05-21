@@ -70,14 +70,13 @@ export const ReportInventory = () => {
 
     const processLaporan = async () => {
         setIsSubmitting(true);
+        const updates = items
+            .map((p) => {
+                const pake = Number(pemakaian[p.id]) || 0;
+                return pake > 0 ? { id: p.id, name: p.item_name, pakai: pake, stokAwal: Number(p.quantity) } : null;
+            })
+            .filter(Boolean) as { id: string; name: string; pakai: number; stokAwal: number }[];
         try {
-            const updates = items
-                .map((p) => {
-                    const pake = Number(pemakaian[p.id]) || 0;
-                    return pake > 0 ? { id: p.id, name: p.item_name, pakai: pake, stokAwal: Number(p.quantity) } : null;
-                })
-                .filter(Boolean) as { id: string; name: string; pakai: number; stokAwal: number }[];
-
             if (updates.length === 0) {
                 setAlert({ type: 'info', title: 'Info', message: 'Tidak ada data pemakaian untuk dilaporkan.' });
                 setIsSubmitting(false);

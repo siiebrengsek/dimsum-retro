@@ -271,7 +271,6 @@ export const Dashboard = () => {
           isValidCash={isValidCash}
           changeNumeric={changeNumeric}
           getTotalPrice={getTotalPrice}
-          getTotalItems={getTotalItems}
           updateQuantity={updateQuantity}
           removeFromCart={removeFromCart}
           clearCart={clearCart}
@@ -321,7 +320,6 @@ export const Dashboard = () => {
               isValidCash={isValidCash}
               changeNumeric={changeNumeric}
               getTotalPrice={getTotalPrice}
-              getTotalItems={getTotalItems}
               updateQuantity={updateQuantity}
               removeFromCart={removeFromCart}
               clearCart={clearCart}
@@ -346,12 +344,12 @@ export const Dashboard = () => {
 const CartPanel = ({
   items, paymentMethod, setPaymentMethod, cashAmount, setCashAmount,
   cashNumeric, totalPriceNumeric, isValidCash, changeNumeric,
-  getTotalPrice, getTotalItems, updateQuantity, removeFromCart, clearCart, handleBayar, formatPrice
+  getTotalPrice, updateQuantity, removeFromCart, clearCart, handleBayar, formatPrice
 }: {
   items: any[]; paymentMethod: PaymentMethod; setPaymentMethod: (m: PaymentMethod) => void;
   cashAmount: string; setCashAmount: (v: string) => void;
   cashNumeric: number; totalPriceNumeric: number; isValidCash: boolean; changeNumeric: number;
-  getTotalPrice: () => string; getTotalItems: () => number;
+  getTotalPrice: () => string;
   updateQuantity: (id: string, q: number) => void; removeFromCart: (id: string) => void;
   clearCart: () => void; handleBayar: () => void; formatPrice: (v: number) => string;
 }) => (
