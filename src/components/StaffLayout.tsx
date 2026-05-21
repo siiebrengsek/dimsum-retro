@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth.store';
 import { SyncIndicator } from './SyncIndicator';
@@ -9,11 +9,24 @@ export const StaffLayout = () => {
     const navigate = useNavigate();
     const signOut = useAuthStore((s) => s.signOut);
     const profile = useAuthStore((s) => s.profile);
+    const touchStartX = useRef(0);
 
     const handleLogout = async () => {
         await signOut();
         navigate('/login');
     };
+
+    const handleTouchStart = useCallback((e: React.TouchEvent) => {
+        touchStartX.current = e.touches[0].clientX;
+    }, []);
+
+    const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+        const delta = e.changedTouches[0].clientX - touchStartX.current;
+        if (Math.abs(delta) > 60) {
+            if (delta > 0) setSidebarOpen(true);
+            else setSidebarOpen(false);
+        }
+    }, []);
 
     const navItems = [
         { path: '/staff/dashboard', icon: '🛒', label: 'Kasir / POS' },
@@ -25,7 +38,11 @@ export const StaffLayout = () => {
     ];
 
     return (
-        <div className="flex h-screen bg-[#0D0D0D] text-white">
+        <div
+            className="flex h-screen bg-[#0D0D0D] text-white"
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+        >
             {/* Mobile overlay */}
             {sidebarOpen && (
                 <div
@@ -34,20 +51,26 @@ export const StaffLayout = () => {
                 />
             )}
 
-            {/* Sidebar */}
-            <div className={`fixed lg:relative z-40 lg:z-auto h-full bg-[#111118] border-r border-[#1A1A2E] flex flex-col pt-8 transition-transform duration-300 w-72 ${
-                sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:-translate-x-0 lg:w-0 lg:overflow-hidden lg:border-r-0'
-            }`}>
-                {/* Close button for mobile */}
+            {/* Sidebar — lg: always visible, mobile: slide from right */}
+            <div className={`
+                fixed lg:relative right-0 z-40 h-full bg-[#111118] border-l border-[#1A1A2E]
+                flex flex-col pt-6 transition-transform duration-300 ease-in-out w-72
+                lg:translate-x-0
+                ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}
+            `}
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+            >
+                {/* Close button (mobile only) */}
                 <button
                     onClick={() => setSidebarOpen(false)}
-                    className="absolute top-4 right-4 lg:hidden text-[#888] hover:text-white text-xl p-1"
+                    className="absolute top-4 left-4 lg:hidden text-[#888] hover:text-white text-xl p-1"
                 >
                     ✕
                 </button>
 
                 {/* Profile Section */}
-                <div className="px-5 pb-5 border-b border-[#1A1A2E]">
+                <div className="px-5 pb-5 border-b border-[#1A1A2E] mt-8 lg:mt-0">
                     <div className="flex justify-between items-center mb-3">
                         <div className="w-12 h-12 rounded-full bg-[#252540] flex items-center justify-center text-2xl">
                             👤
@@ -104,10 +127,10 @@ export const StaffLayout = () => {
 
             {/* Main Content Area */}
             <div className="flex-1 overflow-y-auto relative">
-                {/* Toggle button */}
+                {/* Hamburger button (mobile only) */}
                 <button
                     onClick={() => setSidebarOpen(!sidebarOpen)}
-                    className="absolute top-3 left-3 z-20 w-10 h-10 rounded-xl bg-[#1A1A2E] flex items-center justify-center hover:bg-[#252540] transition text-white text-lg"
+                    className="lg:hidden absolute top-3 right-3 z-20 w-10 h-10 rounded-xl bg-[#1A1A2E] flex items-center justify-center hover:bg-[#252540] transition text-white text-lg"
                 >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
                 </button>
