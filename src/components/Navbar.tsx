@@ -79,6 +79,12 @@ const Navbar = () => {
                 </span>
               )}
             </Link>
+            <Link
+              to="/login"
+              className="text-gray-700 hover:text-primary-600 font-semibold transition-colors text-sm"
+            >
+              Login Staf
+            </Link>
             <a
               href="https://wa.me/6282141066708"
               target="_blank"
@@ -163,6 +169,13 @@ const Navbar = () => {
                   {totalItems}
                 </span>
               )}
+            </Link>
+            <Link
+              to="/login"
+              className="block px-3 py-2 text-gray-700 hover:text-primary-600 font-semibold transition-colors"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Login Staf
             </Link>
             <a
               href="https://wa.me/6282141066708"
