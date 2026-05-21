@@ -221,7 +221,7 @@ export const ReportInventory = () => {
                 )}
             </div>
 
-            <div className="fixed bottom-0 left-0 right-0 sm:left-72 bg-[#0D0D0D] border-t border-[#1A1A2E] p-4 pointer-events-none">
+            <div className="fixed bottom-0 left-0 right-0 lg:left-72 bg-[#0D0D0D] border-t border-[#1A1A2E] p-4 pointer-events-none">
                 <button
                     onClick={handleKirimLaporan}
                     disabled={isSubmitting || isLoading}
