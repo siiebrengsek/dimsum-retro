@@ -339,7 +339,7 @@ export const ReportStockInventory = () => {
             </div>
 
             {/* Fixed Bottom Button */}
-            <div className="fixed bottom-0 left-0 right-0 sm:left-72 p-4 bg-gradient-to-t from-[#0D0D0D] via-[#0D0D0D] to-transparent pointer-events-none">
+            <div className="fixed bottom-0 left-0 right-0 sm:left-72 p-4 bg-gradient-to-t from-[#0D0D0D] from-40% to-transparent pointer-events-none">
                 <button
                     onClick={handleKirimLaporan}
                     disabled={isSubmitting || isLoading}
