@@ -32,7 +32,6 @@ export const StaffLayout = () => {
         { path: '/staff/dashboard', icon: '🛒', label: 'Kasir / POS' },
         { path: '/staff/report-dimsum', icon: '📝', label: 'Laporan Dimsum' },
         { path: '/staff/report-inventory', icon: '📋', label: 'Pemakaian Bahan' },
-        { path: '/staff/report-stock', icon: '📦', label: 'Stock Packaging' },
         { path: '/staff/transaksi-history', icon: '📜', label: 'Transaksi History' },
         { path: '/staff/analitik-penjualan', icon: '📊', label: 'Analitik Penjualan' },
     ];

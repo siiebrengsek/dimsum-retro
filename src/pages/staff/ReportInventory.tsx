@@ -126,11 +126,11 @@ export const ReportInventory = () => {
     return (
         <div className="p-4 sm:p-6 pb-64 max-w-3xl mx-auto min-h-full scroll-smooth">
             <div className="bg-[#FF6B6B] bg-opacity-10 rounded-xl p-4 mb-6">
-                <h1 className="text-[#FF6B6B] font-bold text-lg">Pemakaian Bahan Baku</h1>
+                <h1 className="text-[#FF6B6B] font-bold text-lg">Request Stock Buat Besok</h1>
             </div>
 
             <div className="mb-6 flex items-center justify-between">
-                <h2 className="text-white font-extrabold text-xl tracking-tight">Lapor Pemakaian</h2>
+                <h2 className="text-white font-extrabold text-xl tracking-tight">Laporkan Request</h2>
             </div>
 
             <p className="text-[#888] text-sm mb-6 leading-relaxed">

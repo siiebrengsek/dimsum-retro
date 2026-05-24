@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { FaUsers, FaArrowLeft, FaEdit, FaTimes, FaShieldAlt } from 'react-icons/fa';
+import { FaUsers, FaArrowLeft, FaEdit, FaTimes, FaShieldAlt, FaSyncAlt } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 
 type Profile = {
@@ -21,11 +21,10 @@ export const StaffManagement = () => {
     const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
     const [editForm, setEditForm] = useState({ username: '', nama: '', outlet: '' });
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
     useEffect(() => {
         fetchProfiles();
-        const interval = setInterval(fetchProfiles, 30000);
-        return () => clearInterval(interval);
     }, []);
 
     const fetchProfiles = async () => {
@@ -87,6 +86,7 @@ export const StaffManagement = () => {
     };
 
     return (
+        <>
         <div className="min-h-screen bg-gray-50 p-3 sm:p-8">
             <div className="max-w-7xl mx-auto">
                 <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
@@ -261,5 +261,24 @@ export const StaffManagement = () => {
                 </div>
             )}
         </div>
+
+        {/* Floating Refresh Button */}
+        <button
+            onClick={async () => {
+                setIsRefreshing(true);
+                try {
+                    const { data } = await supabase.from('profiles').select('*').order('role');
+                    if (data) setProfiles(data);
+                } catch {}
+                setIsRefreshing(false);
+            }}
+            disabled={isRefreshing}
+            className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-primary-600 text-white px-5 py-3.5 rounded-full shadow-lg hover:bg-primary-700 transition-all disabled:opacity-70"
+            title="Refresh data"
+        >
+            <FaSyncAlt className={isRefreshing ? 'animate-spin' : ''} />
+            <span className="text-sm font-semibold">Refresh</span>
+        </button>
+        </>
     );
 };

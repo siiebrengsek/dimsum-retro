@@ -19,7 +19,6 @@ import { StaffLayout } from './components/StaffLayout';
 import { Dashboard as StaffDashboard } from './pages/staff/Dashboard';
 import { ReportDimsum as StaffReportDimsum } from './pages/staff/ReportDimsum';
 import { ReportInventory as StaffReportInventory } from './pages/staff/ReportInventory';
-import { ReportStockInventory as StaffReportStockInventory } from './pages/staff/ReportStockInventory';
 import { TransaksiHistory as StaffTransaksiHistory } from './pages/staff/TransaksiHistory';
 import { AnalitikPenjualan as StaffAnalitikPenjualan } from './pages/staff/AnalitikPenjualan';
 import Footer from './components/Footer';
@@ -103,7 +102,6 @@ function App() {
               <Route path="dashboard" element={<StaffDashboard />} />
               <Route path="report-dimsum" element={<StaffReportDimsum />} />
               <Route path="report-inventory" element={<StaffReportInventory />} />
-              <Route path="report-stock" element={<StaffReportStockInventory />} />
               <Route path="transaksi-history" element={<StaffTransaksiHistory />} />
               <Route path="analitik-penjualan" element={<StaffAnalitikPenjualan />} />
             </Route>

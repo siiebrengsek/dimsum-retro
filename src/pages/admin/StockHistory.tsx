@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { FaBoxes, FaPlus, FaTrash, FaEdit, FaArrowLeft, FaTimes, FaSearch, FaStore } from 'react-icons/fa';
+import { FaBoxes, FaPlus, FaTrash, FaEdit, FaArrowLeft, FaTimes, FaSearch, FaStore, FaSyncAlt } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import { getTodayDate } from '../../utils/dateUtils';
 
@@ -50,6 +50,26 @@ export const StockHistory = () => {
     const [editingItem, setEditingItem] = useState<PackagingItem | null>(null);
     const [itemForm, setItemForm] = useState({ name: '', unit: 'Pcs' });
     const [isItemSubmitting, setIsItemSubmitting] = useState(false);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+
+    const handleRefresh = async () => {
+        setIsRefreshing(true);
+        try {
+            let query = supabase
+                .from('packaging_reports')
+                .select('*, packaging_items!inner(name, unit)')
+                .order('created_at', { ascending: false });
+            if (selectedOutlet) query = query.eq('outlet', selectedOutlet);
+            if (selectedDate) query = query.eq('report_date', selectedDate);
+            const [reportRes, itemRes] = await Promise.all([
+                query,
+                supabase.from('packaging_items').select('*').order('name'),
+            ]);
+            if (reportRes.data) setReports(dedupeReports(reportRes.data));
+            if (itemRes.data) setPackagingItems(itemRes.data);
+        } catch {}
+        setIsRefreshing(false);
+    };
 
     const fetchData = async () => {
         setIsLoading(true);
@@ -91,8 +111,6 @@ export const StockHistory = () => {
     useEffect(() => {
         fetchData();
         fetchPackagingItems();
-        const interval = setInterval(() => { fetchData(); fetchPackagingItems(); }, 30000);
-        return () => clearInterval(interval);
     }, []);
 
     useEffect(() => {
@@ -172,6 +190,7 @@ export const StockHistory = () => {
     const totalTerpakai = filteredReports.reduce((sum, r) => sum + r.terpakai, 0);
 
     return (
+        <>
         <div className="min-h-screen bg-gray-50 p-3 sm:p-8">
             <div className="max-w-7xl mx-auto">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8">
@@ -182,12 +201,14 @@ export const StockHistory = () => {
                         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Stock History Packaging</h1>
                         <p className="text-sm sm:text-base text-gray-600">Riwayat laporan stock packaging per outlet</p>
                     </div>
-                    <button
-                        onClick={() => setItemModalOpen(true)}
-                        className="btn-primary flex items-center gap-2 text-sm sm:text-base w-full sm:w-auto justify-center"
-                    >
-                        <FaPlus /> Kelola Item
-                    </button>
+                    <div className="flex gap-2 w-full sm:w-auto">
+                        <button
+                            onClick={() => setItemModalOpen(true)}
+                            className="btn-primary flex items-center gap-2 text-sm sm:text-base w-full sm:w-auto justify-center"
+                        >
+                            <FaPlus /> Kelola Item
+                        </button>
+                    </div>
                 </div>
 
                 {/* Filters */}
@@ -426,5 +447,17 @@ export const StockHistory = () => {
                 </div>
             )}
         </div>
+
+        {/* Floating Refresh Button */}
+        <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-primary-600 text-white px-5 py-3.5 rounded-full shadow-lg hover:bg-primary-700 transition-all disabled:opacity-70"
+            title="Refresh data"
+        >
+            <FaSyncAlt className={isRefreshing ? 'animate-spin' : ''} />
+            <span className="text-sm font-semibold">Refresh</span>
+        </button>
+        </>
     );
 };

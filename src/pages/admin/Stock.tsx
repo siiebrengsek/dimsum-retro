@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../stores/auth.store';
-import { FaBox, FaPlus, FaTrash, FaEdit, FaArrowLeft, FaTimes, FaFileAlt, FaHistory, FaTruck, FaMinusCircle } from 'react-icons/fa';
+import { FaBox, FaPlus, FaTrash, FaEdit, FaArrowLeft, FaTimes, FaFileAlt, FaHistory, FaTruck, FaMinusCircle, FaSyncAlt } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import { getTodayDate } from '../../utils/dateUtils';
 
@@ -62,6 +62,32 @@ export const Stock = () => {
     const [isBarangMasukOpen, setIsBarangMasukOpen] = useState(false);
     const [barangMasukForm, setBarangMasukForm] = useState({ product_id: '', quantity: 0, note: '' });
     const [isBarangMasukSubmitting, setIsBarangMasukSubmitting] = useState(false);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+
+    const handleRefresh = async () => {
+        setIsRefreshing(true);
+        try {
+            const [prodRes, mutRes, reportRes] = await Promise.all([
+                supabase.from('products').select('*').order('name'),
+                supabase.from('stock_mutations').select('*').order('created_at', { ascending: false }),
+                supabase.from('stock_reports').select('*').eq('report_date', selectedDate).order('report_date', { ascending: false }).order('created_at', { ascending: false }),
+            ]);
+            if (prodRes.data) setProducts(prodRes.data);
+            if (mutRes.data) setMutations(mutRes.data);
+            if (reportRes.data) {
+                const enriched = await Promise.all((reportRes.data || []).map(async (r) => {
+                    let outlet: string | null = null;
+                    if (r.reported_by) {
+                        const { data: profile } = await supabase.from('profiles').select('outlet').eq('id', r.reported_by).maybeSingle();
+                        outlet = profile?.outlet || null;
+                    }
+                    return { ...r, profiles: outlet ? { outlet } : null };
+                }));
+                setReports(dedupeReports(enriched as StockReport[]));
+            }
+        } catch {}
+        setIsRefreshing(false);
+    };
 
     const fetchProducts = async () => {
         setIsLoading(true);
@@ -120,13 +146,17 @@ export const Stock = () => {
             const outlet = r.profiles?.outlet || r.reported_by;
             const key = `${r.product_name}|${outlet}|${r.report_date}`;
             const existing = seen.get(key);
-            if (!existing || new Date(r.created_at) > new Date(existing.created_at)) {
+            if (!existing ||
+                new Date(r.created_at).getTime() > new Date(existing.created_at).getTime() ||
+                (new Date(r.created_at).getTime() === new Date(existing.created_at).getTime() && r.id > existing.id)) {
                 seen.set(key, r);
             }
         }
-        return Array.from(seen.values()).sort((a, b) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
+        return Array.from(seen.values()).sort((a, b) => {
+            const timeDiff = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+            if (timeDiff !== 0) return timeDiff;
+            return Number(b.id) - Number(a.id);
+        });
     };
 
     const fetchMutations = async () => {
@@ -196,17 +226,7 @@ export const Stock = () => {
 
     useEffect(() => {
         fetchReports();
-        const interval = setInterval(fetchReports, 30000);
-        return () => clearInterval(interval);
     }, [selectedDate]);
-
-    useEffect(() => {
-        const interval = setInterval(() => {
-            fetchProducts();
-            fetchMutations();
-        }, 30000);
-        return () => clearInterval(interval);
-    }, []);
 
     const handleSaveProduct = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -279,6 +299,7 @@ export const Stock = () => {
     }, {});
 
     return (
+        <>
         <div className="min-h-screen bg-gray-50 p-3 sm:p-8">
             <div className="max-w-7xl mx-auto">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8">
@@ -729,5 +750,17 @@ export const Stock = () => {
                 </div>
             )}
         </div>
+
+        {/* Floating Refresh Button */}
+        <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-primary-600 text-white px-5 py-3.5 rounded-full shadow-lg hover:bg-primary-700 transition-all disabled:opacity-70"
+            title="Refresh data"
+        >
+            <FaSyncAlt className={isRefreshing ? 'animate-spin' : ''} />
+            <span className="text-sm font-semibold">Refresh</span>
+        </button>
+        </>
     );
 };

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { FaArrowLeft, FaChevronDown, FaChevronRight } from 'react-icons/fa';
+import { FaArrowLeft, FaChevronDown, FaChevronRight, FaSyncAlt } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import { getTransactions } from '../../utils/transactions';
 import type { Transaction } from '../../utils/transactions';
@@ -44,6 +44,7 @@ export const SalesAnalysis = () => {
     const [selectedDate, setSelectedDate] = useState(getTodayDate());
     const [collapsedStaff, setCollapsedStaff] = useState<Set<string>>(new Set());
     const [productSort, setProductSort] = useState<Record<string, { key: string; dir: 'asc' | 'desc' }>>({});
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
     const fetchLocalSales = (date: string) => {
         const all = getTransactions();
@@ -53,8 +54,6 @@ export const SalesAnalysis = () => {
 
     useEffect(() => {
         fetchLocalSales(selectedDate);
-        const interval = setInterval(() => fetchLocalSales(selectedDate), 10000);
-        return () => clearInterval(interval);
     }, [selectedDate]);
 
     useEffect(() => {
@@ -90,8 +89,6 @@ export const SalesAnalysis = () => {
             }
         };
         fetchData();
-        const interval = setInterval(fetchData, 30000);
-        return () => clearInterval(interval);
     }, [selectedDate]);
 
     const totals = {
@@ -190,6 +187,7 @@ export const SalesAnalysis = () => {
     ];
 
     return (
+        <>
         <div className="min-h-screen bg-gray-50 p-3 sm:p-8">
             <div className="max-w-7xl mx-auto">
                 <div className="mb-6">
@@ -431,5 +429,37 @@ export const SalesAnalysis = () => {
                 )}
             </div>
         </div>
+
+        {/* Floating Refresh Button */}
+        <button
+            onClick={async () => {
+                setIsRefreshing(true);
+                fetchLocalSales(selectedDate);
+                try {
+                    const { data } = await supabase
+                        .from('sales')
+                        .select('*')
+                        .eq('transaction_date', selectedDate)
+                        .order('created_at', { ascending: false });
+                    const enriched = await Promise.all((data || []).map(async (r) => {
+                        let profile: { username?: string; email?: string; outlet?: string } | null = null;
+                        if (r.staff_id) {
+                            const { data: p } = await supabase.from('profiles').select('username, email, outlet').eq('id', r.staff_id).maybeSingle();
+                            profile = p;
+                        }
+                        return { ...r, profiles: profile };
+                    }));
+                    setSales(enriched as any);
+                } catch {}
+                setIsRefreshing(false);
+            }}
+            disabled={isRefreshing}
+            className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-primary-600 text-white px-5 py-3.5 rounded-full shadow-lg hover:bg-primary-700 transition-all disabled:opacity-70"
+            title="Refresh data"
+        >
+            <FaSyncAlt className={isRefreshing ? 'animate-spin' : ''} />
+            <span className="text-sm font-semibold">Refresh</span>
+        </button>
+        </>
     );
 };

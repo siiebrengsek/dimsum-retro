@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
-import { FaBoxes, FaPlus, FaTrash, FaEdit, FaArrowLeft, FaTimes, FaSearch } from 'react-icons/fa';
+import { FaBoxes, FaPlus, FaTrash, FaEdit, FaArrowLeft, FaTimes, FaSearch, FaSyncAlt } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
@@ -17,6 +17,7 @@ type StockItem = {
 export const Inventory = () => {
     const [stock, setStock] = useState<StockItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isRefreshing, setIsRefreshing] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -52,8 +53,6 @@ export const Inventory = () => {
 
     useEffect(() => {
         fetchStock();
-        const interval = setInterval(fetchStock, 30000);
-        return () => clearInterval(interval);
     }, []);
 
     const handleSaveStock = async (e: React.FormEvent) => {
@@ -156,6 +155,7 @@ export const Inventory = () => {
     };
 
     return (
+        <>
         <div className="min-h-screen bg-gray-50 p-3 sm:p-8">
             <div className="max-w-7xl mx-auto">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8">
@@ -166,12 +166,14 @@ export const Inventory = () => {
                         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Stock Inventory</h1>
                         <p className="text-sm sm:text-base text-gray-600">Manajemen bahan baku dan perlengkapan warehouse</p>
                     </div>
-                    <button
-                        onClick={() => setIsModalOpen(true)}
-                        className="btn-primary flex items-center gap-2 text-sm sm:text-base w-full sm:w-auto justify-center"
-                    >
-                        <FaPlus /> Tambah Barang
-                    </button>
+                    <div className="flex gap-2 w-full sm:w-auto">
+                        <button
+                            onClick={() => setIsModalOpen(true)}
+                            className="btn-primary flex items-center gap-2 text-sm sm:text-base justify-center"
+                        >
+                            <FaPlus /> Tambah Barang
+                        </button>
+                    </div>
                 </div>
 
                 {/* Search + Alphabet Filter */}
@@ -393,5 +395,24 @@ export const Inventory = () => {
                 </div>
             )}
         </div>
+
+        {/* Floating Refresh Button */}
+        <button
+            onClick={async () => {
+                setIsRefreshing(true);
+                try {
+                    const { data } = await supabase.from('inventory').select('*').order('item_name');
+                    if (data) setStock(data);
+                } catch {}
+                setIsRefreshing(false);
+            }}
+            disabled={isRefreshing}
+            className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-primary-600 text-white px-5 py-3.5 rounded-full shadow-lg hover:bg-primary-700 transition-all disabled:opacity-70"
+            title="Refresh data"
+        >
+            <FaSyncAlt className={isRefreshing ? 'animate-spin' : ''} />
+            <span className="text-sm font-semibold">Refresh</span>
+        </button>
+        </>
     );
 };
