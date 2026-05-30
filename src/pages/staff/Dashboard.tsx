@@ -42,7 +42,7 @@ const products: Product[] = [
   { name: 'Dimsum Couple 12pcs', category: 'Original', description: 'Dimsum kukus isi 12pcs dengan toping mix', badgeRight: 'Best Seller', price: 'Rp. 36.000', image: dimsumImages.dimsumCouple },
   { name: 'Dimsum Family', category: 'Original', description: 'Dimsum kukus isi 20pcs dengan toping mix', badgeRight: 'Best Seller', price: 'Rp. 36.000', image: dimsumImages.dimsumFamily },
   { name: 'Dimsum Brotherhood', category: 'Original', description: 'Dimsum kukus isi 24pcs dengan toping mix', badgeRight: 'Best Seller', price: 'Rp. 72.000', image: dimsumImages.dimsumBrotherhood },
-  { name: 'Dimsum Mentai 4pcs', category: 'Dimsum Mentai', description: 'Dimsum Kukus dengan saus mentai', badgeRight: 'Best Seller', badgeLeft: 'Free Chili Oil', price: 'Rp. 20.0000', image: dimsumImages.dimsumMentai4pcs },
+  { name: 'Dimsum Mentai 4pcs', category: 'Dimsum Mentai', description: 'Dimsum Kukus dengan saus mentai', badgeRight: 'Best Seller', badgeLeft: 'Free Chili Oil', price: 'Rp. 20.000', image: dimsumImages.dimsumMentai4pcs },
   { name: 'Dimsum Mentai 6pcs', category: 'Dimsum Mentai', description: 'Dimsum Kukus dengan saus mentai', badgeRight: 'Best Seller', badgeLeft: 'Free Chili Oil', price: 'Rp. 30.000', image: dimsumImages.dimsumMentai6pcs },
   { name: 'Dimsum Mentai 16pcs', category: 'Dimsum Mentai', description: 'Dimsum Kukus dengan saus mentai', badgeRight: 'Best Seller', badgeLeft: 'Free Chili Oil', price: 'Rp. 80.000', image: dimsumImages.dimsumMentai16pcs },
   { name: 'Dimsum Bakar 4pcs', category: 'New Arival', description: 'Dimsum kukus yang di bakar dengan saus BBQ', badgeRight: 'New', badgeLeft: 'Free Chili Oil', price: 'Rp. 20.000', image: dimsumImages.dimsumBakar4pcs },
