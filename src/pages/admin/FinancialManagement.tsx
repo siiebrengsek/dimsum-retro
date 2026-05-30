@@ -97,7 +97,7 @@ export const FinancialManagement = () => {
   }, [terjual.num]);
 
   useEffect(() => {
-    supabase.from('profiles').select('outlet').neq('role', 'admin_warehouse').then(({ data }) => {
+    supabase.from('profiles').select('outlet').then(({ data }) => {
       const unique = [...new Set((data || []).map(p => p.outlet).filter(Boolean) as string[])];
       setOutlets(unique.sort());
       if (!selectedOutlet && unique.length > 0) setSelectedOutlet(unique[0]);
