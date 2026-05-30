@@ -89,12 +89,11 @@ export const FinancialManagement = () => {
   const [newItemName, setNewItemName] = useState('');
 
   const setoranCash = useMemo(() => {
-    return Math.max(0, (terjual.num * 2.2 / 2200) - online.num);
+    return Math.max(0, (terjual.num * 2200) - online.num);
   }, [terjual.num, online.num]);
 
   const prevCashLabel = useMemo(() => {
-    const raw = terjual.num * 2.2 / 2200;
-    return fmt(raw);
+    return fmt(terjual.num * 2200);
   }, [terjual.num]);
 
   useEffect(() => {
@@ -361,7 +360,7 @@ export const FinancialManagement = () => {
                     <p className="text-xs text-green-700 font-semibold uppercase tracking-wider mb-0.5">Setoran Cash</p>
                     <p className="text-xl sm:text-2xl font-bold text-green-700">{fmt(setoranCash)}</p>
                     <p className="text-[10px] text-green-500 mt-0.5">
-                      {terjual.num} &times; 2.2 / 2200 = {prevCashLabel}
+                      {terjual.num} &times; 2200 = {prevCashLabel}
                       {online.num > 0 && ` — ${fmt(online.num)} online`}
                     </p>
                   </div>
