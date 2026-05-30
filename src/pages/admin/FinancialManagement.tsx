@@ -104,12 +104,6 @@ export const FinancialManagement = () => {
     });
   }, []);
 
-  useEffect(() => {
-    supabase.from('inventory').select('item_name').order('item_name').then(({ data }) => {
-      setInventoryRef((data || []).map(i => i.item_name));
-    });
-  }, []);
-
   const loadReport = useCallback(async () => {
     if (!selectedDate || !selectedOutlet) return;
     setIsLoading(true);
@@ -137,8 +131,17 @@ export const FinancialManagement = () => {
         setColumnData(cols);
         if (Array.isArray(r.pending_stock_items) && r.pending_stock_items.length > 0) {
           setPendingStock(r.pending_stock_items);
+          supabase.from('inventory').select('item_name').order('item_name').then(({ data }) => {
+            setInventoryRef((data || []).map(i => i.item_name));
+          });
         } else {
-          setPendingStock([]);
+          const { data: invItems } = await supabase
+            .from('inventory')
+            .select('item_name')
+            .order('item_name');
+          const invNames = (invItems || []).map(i => i.item_name);
+          setInventoryRef(invNames);
+          setPendingStock(invNames.map(name => ({ name, stok_kemarin: 0, perubahan: 0, sisa_hari_ini: 0 })));
         }
       } else {
         const yesterday = new Date(selectedDate);
@@ -165,13 +168,23 @@ export const FinancialManagement = () => {
         const prevStock = prev
           ? (prev as unknown as FinancialReport).pending_stock_items || []
           : [];
+        const prevMap = new Map<string, number>();
+        for (const p of prevStock) {
+          prevMap.set(p.name, p.sisa_hari_ini || 0);
+        }
+
+        const { data: invItems } = await supabase
+          .from('inventory')
+          .select('item_name')
+          .order('item_name');
+        const invNames = (invItems || []).map(i => i.item_name);
+        setInventoryRef(invNames);
+
         setPendingStock(
-          prevStock.map((p: PendingStockItem) => ({
-            name: p.name,
-            stok_kemarin: p.sisa_hari_ini || 0,
-            perubahan: 0,
-            sisa_hari_ini: p.sisa_hari_ini || 0,
-          }))
+          invNames.map(name => {
+            const stokKemarin = prevMap.get(name) || 0;
+            return { name, stok_kemarin: stokKemarin, perubahan: 0, sisa_hari_ini: stokKemarin };
+          })
         );
       }
     } catch {
