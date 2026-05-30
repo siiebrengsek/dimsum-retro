@@ -91,6 +91,14 @@ export const FinancialManagement = () => {
     }));
   }, [setoranItems]);
 
+  const totalTerjualSetoran = useMemo(() => {
+    return setoranItems.reduce((sum, item) => sum + numOr0(item.totalTerjual), 0);
+  }, [setoranItems]);
+
+  const totalOnlineSetoran = useMemo(() => {
+    return setoranItems.reduce((sum, item) => sum + numOr0(item.setoranOnline), 0);
+  }, [setoranItems]);
+
   const totalSetoran = useMemo(() => {
     return hasilSetoran.reduce((sum, h) => sum + h.hasil, 0);
   }, [hasilSetoran]);
@@ -454,7 +462,9 @@ export const FinancialManagement = () => {
                     </tbody>
                     <tfoot className="bg-gray-50/80 border-t border-gray-100">
                       <tr>
-                        <td className="px-4 sm:px-6 py-3 text-sm font-extrabold text-gray-900" colSpan={3}>Total Keseluruhan</td>
+                        <td className="px-4 sm:px-6 py-3 text-sm font-extrabold text-gray-900">Total Keseluruhan</td>
+                        <td className="px-3 py-3 text-right text-sm font-bold text-gray-800">{totalTerjualSetoran}</td>
+                        <td className="px-3 py-3 text-right text-sm font-bold text-gray-800">{fmt(totalOnlineSetoran)}</td>
                         <td className="px-3 py-3 text-right text-sm font-extrabold text-green-700">{fmt(totalSetoran)}</td>
                         <td />
                       </tr>
