@@ -104,6 +104,17 @@ export const FinancialManagement = () => {
     });
   }, []);
 
+  useEffect(() => {
+    supabase.from('inventory').select('item_name').order('item_name').then(({ data }) => {
+      setInventoryRef((data || []).map(i => i.item_name));
+    });
+  }, []);
+
+  const getInventoryNames = useCallback(async () => {
+    const { data } = await supabase.from('inventory').select('item_name').order('item_name');
+    return (data || []).map((i: { item_name: string }) => i.item_name);
+  }, []);
+
   const loadReport = useCallback(async () => {
     if (!selectedDate || !selectedOutlet) return;
     setIsLoading(true);
@@ -131,15 +142,8 @@ export const FinancialManagement = () => {
         setColumnData(cols);
         if (Array.isArray(r.pending_stock_items) && r.pending_stock_items.length > 0) {
           setPendingStock(r.pending_stock_items);
-          supabase.from('inventory').select('item_name').order('item_name').then(({ data }) => {
-            setInventoryRef((data || []).map(i => i.item_name));
-          });
         } else {
-          const { data: invItems } = await supabase
-            .from('inventory')
-            .select('item_name')
-            .order('item_name');
-          const invNames = (invItems || []).map(i => i.item_name);
+          const invNames = await getInventoryNames();
           setInventoryRef(invNames);
           setPendingStock(invNames.map(name => ({ name, stok_kemarin: 0, perubahan: 0, sisa_hari_ini: 0 })));
         }
@@ -173,13 +177,8 @@ export const FinancialManagement = () => {
           prevMap.set(p.name, p.sisa_hari_ini || 0);
         }
 
-        const { data: invItems } = await supabase
-          .from('inventory')
-          .select('item_name')
-          .order('item_name');
-        const invNames = (invItems || []).map(i => i.item_name);
+        const invNames = await getInventoryNames();
         setInventoryRef(invNames);
-
         setPendingStock(
           invNames.map(name => {
             const stokKemarin = prevMap.get(name) || 0;
@@ -187,12 +186,12 @@ export const FinancialManagement = () => {
           })
         );
       }
-    } catch {
-      console.error('Error loading report');
+    } catch (e) {
+      console.error('Error loading report', e);
     } finally {
       setIsLoading(false);
     }
-  }, [selectedDate, selectedOutlet]);
+  }, [selectedDate, selectedOutlet, getInventoryNames]);
 
   useEffect(() => { loadReport(); }, [loadReport]);
 
