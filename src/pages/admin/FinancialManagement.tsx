@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { getTodayDate } from '../../utils/dateUtils';
-import { FaMoneyBillWave, FaPlus, FaTrash, FaSave, FaSyncAlt, FaBoxes, FaInfoCircle } from 'react-icons/fa';
+import { FaMoneyBillWave, FaPlus, FaTrash, FaSave, FaSyncAlt, FaBoxes, FaInfoCircle, FaSearch } from 'react-icons/fa';
 
 const COLUMNS = [
   { key: 'teh_dll', label: 'Teh dll' },
@@ -11,17 +11,20 @@ const COLUMNS = [
   { key: 'cicilan', label: 'Cicilan' },
 ] as const;
 
-type ColumnData = {
-  saldo_kemarin: number;
-  perubahan: number;
-  saldo: number;
-};
+type ColumnData = { saldo_kemarin: number; perubahan: number; saldo: number };
 
 type PendingStockItem = {
   name: string;
   stok_kemarin: number;
   perubahan: number;
   sisa_hari_ini: number;
+};
+
+type SetoranItem = {
+  id: string;
+  name: string;
+  totalTerjual: string;
+  setoranOnline: string;
 };
 
 type FinancialReport = {
@@ -31,6 +34,7 @@ type FinancialReport = {
   total_terjual_dimsum: number;
   setoran_online: number;
   setoran_cash: number;
+  setoran_items: SetoranItem[];
   teh_dll_saldo_kemarin: number;
   teh_dll_perubahan: number;
   teh_dll_saldo: number;
@@ -49,26 +53,18 @@ type FinancialReport = {
   pending_stock_items: PendingStockItem[];
 };
 
+let idCounter = 0;
+const newId = () => `s${++idCounter}_${Date.now()}`;
+
 const emptyColumn = (): ColumnData => ({ saldo_kemarin: 0, perubahan: 0, saldo: 0 });
+const emptySetoran = (): SetoranItem => ({ id: newId(), name: 'Setoran Cash', totalTerjual: '0', setoranOnline: '0' });
 
 const fmt = (val: number) =>
   val % 1 === 0
     ? `Rp ${val.toLocaleString('id-ID')}`
     : `Rp ${val.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-const useNumberInput = (initial: number) => {
-  const [str, setStr] = useState(String(initial));
-  const num = Number(str) || 0;
-  const setNum = (n: number) => setStr(String(n));
-  const onChange = (raw: string) => {
-    if (raw === '' || raw === '-') { setStr(raw); return; }
-    if (/^-?\d*$/.test(raw)) setStr(raw);
-  };
-  const onBlur = () => {
-    if (str === '' || str === '-') setStr('0');
-  };
-  return { str, num, setNum, onChange, onBlur };
-};
+const numOr0 = (s: string) => Math.max(0, Number(s) || 0);
 
 export const FinancialManagement = () => {
   const [selectedDate, setSelectedDate] = useState(getTodayDate());
@@ -80,21 +76,24 @@ export const FinancialManagement = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [saveMessage, setSaveMessage] = useState<'saved' | 'error' | null>(null);
   const [inventoryRef, setInventoryRef] = useState<string[]>([]);
-
-  const terjual = useNumberInput(0);
-  const online = useNumberInput(0);
-
   const [columnData, setColumnData] = useState<Record<string, ColumnData>>({});
   const [pendingStock, setPendingStock] = useState<PendingStockItem[]>([]);
   const [newItemName, setNewItemName] = useState('');
+  const [setoranItems, setSetoranItems] = useState<SetoranItem[]>([emptySetoran()]);
+  const [stockSearch, setStockSearch] = useState('');
+  const [stockSortKey, setStockSortKey] = useState<'name' | 'stok_kemarin'>('name');
+  const [stockSortDir, setStockSortDir] = useState<'asc' | 'desc'>('asc');
 
-  const setoranCash = useMemo(() => {
-    return Math.max(0, (terjual.num * 2200) - online.num);
-  }, [terjual.num, online.num]);
+  const hasilSetoran = useMemo(() => {
+    return setoranItems.map(item => ({
+      id: item.id,
+      hasil: Math.max(0, numOr0(item.totalTerjual) * 2200 - numOr0(item.setoranOnline)),
+    }));
+  }, [setoranItems]);
 
-  const prevCashLabel = useMemo(() => {
-    return fmt(terjual.num * 2200);
-  }, [terjual.num]);
+  const totalSetoran = useMemo(() => {
+    return hasilSetoran.reduce((sum, h) => sum + h.hasil, 0);
+  }, [hasilSetoran]);
 
   useEffect(() => {
     supabase.from('profiles').select('outlet').then(({ data }) => {
@@ -129,8 +128,6 @@ export const FinancialManagement = () => {
       if (existing) {
         const r = existing as unknown as FinancialReport;
         setReportId(r.id);
-        terjual.setNum(r.total_terjual_dimsum);
-        online.setNum(Number(r.setoran_online));
         const cols: Record<string, ColumnData> = {};
         for (const c of COLUMNS) {
           cols[c.key] = {
@@ -140,6 +137,23 @@ export const FinancialManagement = () => {
           };
         }
         setColumnData(cols);
+
+        if (Array.isArray(r.setoran_items) && r.setoran_items.length > 0) {
+          setSetoranItems(r.setoran_items.map((s: any) => ({
+            id: s.id || newId(),
+            name: s.name || 'Setoran Cash',
+            totalTerjual: String(s.totalTerjual ?? '0'),
+            setoranOnline: String(s.setoranOnline ?? '0'),
+          })));
+        } else {
+          setSetoranItems([{
+            id: newId(),
+            name: 'Setoran Cash',
+            totalTerjual: String(r.total_terjual_dimsum || 0),
+            setoranOnline: String(Number(r.setoran_online) || 0),
+          }]);
+        }
+
         if (Array.isArray(r.pending_stock_items) && r.pending_stock_items.length > 0) {
           setPendingStock(r.pending_stock_items);
         } else {
@@ -160,8 +174,6 @@ export const FinancialManagement = () => {
           .maybeSingle();
 
         setReportId(null);
-        terjual.setNum(0);
-        online.setNum(0);
         const cols: Record<string, ColumnData> = {};
         for (const c of COLUMNS) {
           const prevVal = prev ? Number((prev as any)[`${c.key}_saldo`] || 0) : 0;
@@ -169,13 +181,13 @@ export const FinancialManagement = () => {
         }
         setColumnData(cols);
 
+        setSetoranItems([emptySetoran()]);
+
         const prevStock = prev
           ? (prev as unknown as FinancialReport).pending_stock_items || []
           : [];
         const prevMap = new Map<string, number>();
-        for (const p of prevStock) {
-          prevMap.set(p.name, p.sisa_hari_ini || 0);
-        }
+        for (const p of prevStock) prevMap.set(p.name, p.sisa_hari_ini || 0);
 
         const invNames = await getInventoryNames();
         setInventoryRef(invNames);
@@ -207,11 +219,7 @@ export const FinancialManagement = () => {
   const handleStockChange = (index: number, value: number) => {
     setPendingStock(prev => {
       const next = [...prev];
-      next[index] = {
-        ...next[index],
-        perubahan: value,
-        sisa_hari_ini: next[index].stok_kemarin + value,
-      };
+      next[index] = { ...next[index], perubahan: value, sisa_hari_ini: next[index].stok_kemarin + value };
       return next;
     });
   };
@@ -227,6 +235,48 @@ export const FinancialManagement = () => {
     setPendingStock(prev => prev.filter((_, i) => i !== index));
   };
 
+  const updateSetoranItem = (id: string, field: 'name' | 'totalTerjual' | 'setoranOnline', value: string) => {
+    setSetoranItems(prev => prev.map(item => (item.id === id ? { ...item, [field]: value } : item)));
+  };
+
+  const addSetoranRow = () => {
+    setSetoranItems(prev => [...prev, { id: newId(), name: '', totalTerjual: '0', setoranOnline: '0' }]);
+  };
+
+  const removeSetoranRow = (id: string) => {
+    setSetoranItems(prev => prev.filter(item => item.id !== id));
+  };
+
+  const toggleStockSort = (key: 'name' | 'stok_kemarin') => {
+    setStockSortKey(prev => {
+      if (prev === key) {
+        setStockSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+        return prev;
+      }
+      setStockSortDir('asc');
+      return key;
+    });
+  };
+
+  const filteredStock = useMemo(() => {
+    let list = pendingStock;
+    if (stockSearch.trim()) {
+      const q = stockSearch.toLowerCase();
+      list = list.filter(item => item.name.toLowerCase().includes(q));
+    }
+    list = [...list].sort((a, b) => {
+      if (stockSortKey === 'name') {
+        return stockSortDir === 'asc'
+          ? a.name.localeCompare(b.name)
+          : b.name.localeCompare(a.name);
+      }
+      return stockSortDir === 'asc'
+        ? a.stok_kemarin - b.stok_kemarin
+        : b.stok_kemarin - a.stok_kemarin;
+    });
+    return list;
+  }, [pendingStock, stockSearch, stockSortKey, stockSortDir]);
+
   const handleSave = async () => {
     setIsSaving(true);
     setSaveMessage(null);
@@ -234,11 +284,13 @@ export const FinancialManagement = () => {
       const payload: Record<string, any> = {
         report_date: selectedDate,
         outlet: selectedOutlet,
-        total_terjual_dimsum: terjual.num,
-        setoran_online: online.num,
-        setoran_cash: setoranCash,
+        setoran_items: setoranItems,
         pending_stock_items: pendingStock,
       };
+
+      payload.total_terjual_dimsum = numOr0(setoranItems[0]?.totalTerjual || '0');
+      payload.setoran_online = numOr0(setoranItems[0]?.setoranOnline || '0');
+      payload.setoran_cash = totalSetoran;
 
       for (const c of COLUMNS) {
         const col = columnData[c.key] || emptyColumn();
@@ -280,20 +332,22 @@ export const FinancialManagement = () => {
     setIsRefreshing(false);
   };
 
-  const renderNumberInput = (
-    value: string,
-    onValChange: (raw: string) => void,
-    onBlur: () => void,
-    cls = ''
-  ) => (
+  const renderNumInput = (val: string, onChange: (v: string) => void, cls = '') => (
     <input
       type="text"
       inputMode="numeric"
-      value={value}
-      onChange={e => onValChange(e.target.value)}
-      onBlur={onBlur}
-      className={`rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500 text-sm ${cls || 'w-28 sm:w-36 text-right'}`}
+      value={val}
+      onChange={e => {
+        const raw = e.target.value;
+        if (raw === '' || raw === '-' || /^-?\d*$/.test(raw)) onChange(raw);
+      }}
+      onBlur={() => { if (val === '' || val === '-') onChange('0'); }}
+      className={`rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500 text-sm ${cls || 'w-24 sm:w-28 text-right'}`}
     />
+  );
+
+  const SortIcon = ({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }) => (
+    <span className="inline-block ml-1 text-xs">{active ? (dir === 'asc' ? '▲' : '▼') : '⇅'}</span>
   );
 
   return (
@@ -344,7 +398,7 @@ export const FinancialManagement = () => {
             </div>
           ) : (
             <div className="space-y-6">
-              {/* Section 1: Setoran Cash */}
+              {/* Section 1: Setoran Cash — Dynamic */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="px-4 sm:px-6 py-4 border-b border-gray-100 bg-gray-50/50">
                   <h2 className="font-bold text-gray-900 text-sm sm:text-base">
@@ -352,39 +406,72 @@ export const FinancialManagement = () => {
                     Setoran Cash
                   </h2>
                 </div>
-                <div className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                      Total Terjual Dimsum
-                    </label>
-                    <div className="relative">
-                      {renderNumberInput(terjual.str, terjual.onChange, terjual.onBlur, 'w-full pr-10')}
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium">pcs</span>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                      Setoran Online (Rp)
-                    </label>
-                    {renderNumberInput(online.str, online.onChange, online.onBlur, 'w-full')}
-                  </div>
-                  <div className="bg-green-50 rounded-xl border border-green-100 p-4 flex flex-col justify-center">
-                    <p className="text-xs text-green-700 font-semibold uppercase tracking-wider mb-0.5">Setoran Cash</p>
-                    <p className="text-xl sm:text-2xl font-bold text-green-700">{fmt(setoranCash)}</p>
-                    <p className="text-[10px] text-green-500 mt-0.5">
-                      {terjual.num} &times; 2200 = {prevCashLabel}
-                      {online.num > 0 && ` — ${fmt(online.num)} online`}
-                    </p>
-                  </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead className="bg-gray-50/50 border-b border-gray-100">
+                      <tr>
+                        <th className="px-4 sm:px-6 py-3 text-xs font-bold text-gray-500 uppercase">Nama</th>
+                        <th className="px-3 py-3 text-xs font-bold text-gray-500 uppercase text-right">Total Terjual</th>
+                        <th className="px-3 py-3 text-xs font-bold text-gray-500 uppercase text-right">Setoran Online</th>
+                        <th className="px-3 py-3 text-xs font-bold text-gray-900 uppercase text-right">Hasil</th>
+                        <th className="px-3 py-3 w-10" />
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {setoranItems.map((item) => {
+                        const hasil = Math.max(0, numOr0(item.totalTerjual) * 2200 - numOr0(item.setoranOnline));
+                        return (
+                          <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-4 sm:px-6 py-2">
+                              <input
+                                type="text"
+                                value={item.name}
+                                onChange={e => updateSetoranItem(item.id, 'name', e.target.value)}
+                                className="w-full rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                                placeholder="Nama setoran..."
+                              />
+                            </td>
+                            <td className="px-3 py-2 text-right">
+                              <div className="inline-flex items-center gap-1">
+                                {renderNumInput(item.totalTerjual, v => updateSetoranItem(item.id, 'totalTerjual', v))}
+                                <span className="text-xs text-gray-400">pcs</span>
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 text-right">
+                              {renderNumInput(item.setoranOnline, v => updateSetoranItem(item.id, 'setoranOnline', v))}
+                            </td>
+                            <td className="px-3 py-2 text-right text-sm font-bold text-primary-600">{fmt(hasil)}</td>
+                            <td className="px-3 py-2 text-right">
+                              {setoranItems.length > 1 && (
+                                <button onClick={() => removeSetoranRow(item.id)} className="text-gray-400 hover:text-red-500 transition-colors p-1">
+                                  <FaTrash size={12} />
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    <tfoot className="bg-gray-50/80 border-t border-gray-100">
+                      <tr>
+                        <td className="px-4 sm:px-6 py-3 text-sm font-extrabold text-gray-900" colSpan={3}>Total Keseluruhan</td>
+                        <td className="px-3 py-3 text-right text-sm font-extrabold text-green-700">{fmt(totalSetoran)}</td>
+                        <td />
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+                <div className="px-4 sm:px-6 py-3 border-t border-gray-100">
+                  <button onClick={addSetoranRow} className="btn-secondary flex items-center gap-1.5 text-sm">
+                    <FaPlus /> Tambah Baris
+                  </button>
                 </div>
               </div>
 
               {/* Section 2: 5 Kolom Keuangan */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="px-4 sm:px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-                  <h2 className="font-bold text-gray-900 text-sm sm:text-base">
-                    5 Kolom Keuangan
-                  </h2>
+                  <h2 className="font-bold text-gray-900 text-sm sm:text-base">5 Kolom Keuangan</h2>
                   <p className="text-xs text-gray-500">Saldo = Saldo Kemarin + Perubahan</p>
                 </div>
                 <div className="overflow-x-auto">
@@ -405,11 +492,7 @@ export const FinancialManagement = () => {
                             <td className="px-4 sm:px-6 py-3 text-sm font-semibold text-gray-900 whitespace-nowrap">{c.label}</td>
                             <td className="px-3 py-3 text-right text-sm text-gray-600">{fmt(col.saldo_kemarin)}</td>
                             <td className="px-3 py-3 text-right">
-                              {renderNumberInput(
-                                String(col.perubahan),
-                                (raw) => handleColumnChange(c.key, Number(raw) || 0),
-                                () => {}
-                              )}
+                              {renderNumInput(String(col.perubahan), v => handleColumnChange(c.key, Number(v) || 0))}
                             </td>
                             <td className="px-3 py-3 text-right text-sm font-bold text-primary-600">{fmt(col.saldo)}</td>
                           </tr>
@@ -453,51 +536,67 @@ export const FinancialManagement = () => {
                       className="flex-1 rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500 text-sm"
                       placeholder="Nama item..."
                     />
-                    <button
-                      onClick={addPendingItem}
-                      className="btn-primary flex items-center gap-1.5 text-sm whitespace-nowrap"
-                    >
+                    <button onClick={addPendingItem} className="btn-primary flex items-center gap-1.5 text-sm whitespace-nowrap">
                       <FaPlus /> Tambah
                     </button>
                   </div>
 
-                  {pendingStock.length === 0 ? (
-                    <p className="text-sm text-gray-400 text-center py-4">Belum ada item pending.</p>
+                  <div className="relative mb-4">
+                    <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+                    <input
+                      type="text"
+                      value={stockSearch}
+                      onChange={e => setStockSearch(e.target.value)}
+                      className="w-full rounded-lg border-gray-300 pl-8 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                      placeholder="Cari item..."
+                    />
+                  </div>
+
+                  {filteredStock.length === 0 ? (
+                    <p className="text-sm text-gray-400 text-center py-4">
+                      {pendingStock.length === 0 ? 'Belum ada item pending.' : 'Tidak ada item yang cocok.'}
+                    </p>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full text-left">
                         <thead className="bg-gray-50/50 border-b border-gray-100">
                           <tr>
-                            <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Nama Item</th>
-                            <th className="px-3 py-3 text-xs font-bold text-gray-500 uppercase text-right">Stok Kemarin</th>
+                            <th
+                              className="px-4 py-3 text-xs font-bold text-gray-500 uppercase cursor-pointer select-none hover:text-primary-600"
+                              onClick={() => toggleStockSort('name')}
+                            >
+                              Nama Item <SortIcon active={stockSortKey === 'name'} dir={stockSortDir} />
+                            </th>
+                            <th
+                              className="px-3 py-3 text-xs font-bold text-gray-500 uppercase text-right cursor-pointer select-none hover:text-primary-600"
+                              onClick={() => toggleStockSort('stok_kemarin')}
+                            >
+                              Stok Kemarin <SortIcon active={stockSortKey === 'stok_kemarin'} dir={stockSortDir} />
+                            </th>
                             <th className="px-3 py-3 text-xs font-bold text-gray-500 uppercase text-right">Perubahan (+/-)</th>
                             <th className="px-3 py-3 text-xs font-bold text-gray-900 uppercase text-right">Sisa Hari Ini</th>
                             <th className="px-3 py-3 w-10" />
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
-                          {pendingStock.map((item, i) => (
-                            <tr key={i} className="hover:bg-gray-50 transition-colors">
-                              <td className="px-4 py-3 text-sm font-semibold text-gray-900 whitespace-nowrap">{item.name}</td>
-                              <td className="px-3 py-3 text-right text-sm text-gray-600">{item.stok_kemarin}</td>
-                              <td className="px-3 py-3 text-right">
-                                {renderNumberInput(
-                                  String(item.perubahan),
-                                  (raw) => handleStockChange(i, Number(raw) || 0),
-                                  () => {}
-                                )}
-                              </td>
-                              <td className="px-3 py-3 text-right text-sm font-bold text-primary-600">{item.sisa_hari_ini}</td>
-                              <td className="px-3 py-3 text-right">
-                                <button
-                                  onClick={() => removePendingItem(i)}
-                                  className="text-gray-400 hover:text-red-500 transition-colors p-1"
-                                >
-                                  <FaTrash size={12} />
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
+                          {filteredStock.map((item) => {
+                            const realIndex = pendingStock.findIndex(p => p.name === item.name);
+                            return (
+                              <tr key={item.name} className="hover:bg-gray-50 transition-colors">
+                                <td className="px-4 py-3 text-sm font-semibold text-gray-900 whitespace-nowrap">{item.name}</td>
+                                <td className="px-3 py-3 text-right text-sm text-gray-600">{item.stok_kemarin}</td>
+                                <td className="px-3 py-3 text-right">
+                                  {renderNumInput(String(item.perubahan), v => handleStockChange(realIndex, Number(v) || 0))}
+                                </td>
+                                <td className="px-3 py-3 text-right text-sm font-bold text-primary-600">{item.sisa_hari_ini}</td>
+                                <td className="px-3 py-3 text-right">
+                                  <button onClick={() => removePendingItem(realIndex)} className="text-gray-400 hover:text-red-500 transition-colors p-1">
+                                    <FaTrash size={12} />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -509,21 +608,13 @@ export const FinancialManagement = () => {
               <div className="flex items-center justify-between">
                 <div>
                   {saveMessage === 'saved' && (
-                    <span className="text-sm text-green-600 font-semibold bg-green-50 px-3 py-1.5 rounded-lg border border-green-100">
-                      Laporan tersimpan!
-                    </span>
+                    <span className="text-sm text-green-600 font-semibold bg-green-50 px-3 py-1.5 rounded-lg border border-green-100">Laporan tersimpan!</span>
                   )}
                   {saveMessage === 'error' && (
-                    <span className="text-sm text-red-600 font-semibold bg-red-50 px-3 py-1.5 rounded-lg border border-red-100">
-                      Gagal menyimpan. Coba lagi.
-                    </span>
+                    <span className="text-sm text-red-600 font-semibold bg-red-50 px-3 py-1.5 rounded-lg border border-red-100">Gagal menyimpan. Coba lagi.</span>
                   )}
                 </div>
-                <button
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className="btn-primary flex items-center gap-2 text-sm px-6 py-2.5"
-                >
+                <button onClick={handleSave} disabled={isSaving} className="btn-primary flex items-center gap-2 text-sm px-6 py-2.5">
                   <FaSave className={isSaving ? 'animate-spin' : ''} />
                   {isSaving ? 'Menyimpan...' : 'Simpan Laporan'}
                 </button>
