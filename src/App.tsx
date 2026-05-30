@@ -14,6 +14,7 @@ import { SalesAnalysis } from './pages/admin/SalesAnalysis';
 import { StaffManagement } from './pages/admin/StaffManagement';
 import { Stock } from './pages/admin/Stock';
 import { StockHistory } from './pages/admin/StockHistory';
+import { FinancialManagement } from './pages/admin/FinancialManagement';
 
 import { StaffLayout } from './components/StaffLayout';
 import { Dashboard as StaffDashboard } from './pages/staff/Dashboard';
@@ -57,6 +58,7 @@ function App() {
               <Route path="staff" element={<StaffManagement />} />
               <Route path="stock" element={<Stock />} />
               <Route path="stock-history" element={<StockHistory />} />
+              <Route path="financial" element={<FinancialManagement />} />
             </Route>
 
             {/* Staff Routes - Kasir App UI */}

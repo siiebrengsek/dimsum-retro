@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth.store';
 import {
-    FaWarehouse, FaBox, FaCube, FaChartLine, FaHistory, FaUsers, FaSignOutAlt
+    FaWarehouse, FaBox, FaCube, FaChartLine, FaHistory, FaUsers, FaSignOutAlt, FaMoneyBillWave
 } from 'react-icons/fa';
 
 export const AdminLayout = () => {
@@ -36,7 +36,8 @@ export const AdminLayout = () => {
         { path: '/admin/stock', icon: FaCube, label: 'Stock Dimsum' },
         { path: '/admin/sales', icon: FaChartLine, label: 'Sales Analysis' },
         { path: '/admin/stock-history', icon: FaHistory, label: 'Stock History' },
-        { path: '/admin/staff', icon: FaUsers, label: 'Staff Mgmt' },
+        { path: '/admin/staff', icon: FaUsers, label: 'Staff Management' },
+        { path: '/admin/financial', icon: FaMoneyBillWave, label: 'Financial' },
     ];
 
     return (
