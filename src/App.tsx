@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Products from './pages/Products';
@@ -23,6 +23,7 @@ import { TransaksiHistory as StaffTransaksiHistory } from './pages/staff/Transak
 import { AnalitikPenjualan as StaffAnalitikPenjualan } from './pages/staff/AnalitikPenjualan';
 import Footer from './components/Footer';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { AdminLayout } from './components/AdminLayout';
 import { CartProvider } from './context/CartContext';
 import { useAuthStore } from './stores/auth.store';
 import './index.css';
@@ -39,56 +40,24 @@ function App() {
       <Router>
         <div className="min-h-screen bg-gray-50 flex flex-col">
           <Routes>
-            {/* Admin Routes - No Navbar/Footer */}
+            {/* Admin Routes - Sidebar Layout */}
             <Route path="/login" element={<Login />} />
             <Route
-              path="/admin/dashboard"
+              path="/admin"
               element={
                 <ProtectedRoute allowedRoles={['admin_warehouse']}>
-                  <Dashboard />
+                  <AdminLayout />
                 </ProtectedRoute>
               }
-            />
-            <Route
-              path="/admin/inventory"
-              element={
-                <ProtectedRoute allowedRoles={['admin_warehouse']}>
-                  <Inventory />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/sales"
-              element={
-                <ProtectedRoute allowedRoles={['admin_warehouse']}>
-                  <SalesAnalysis />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/staff"
-              element={
-                <ProtectedRoute allowedRoles={['admin_warehouse']}>
-                  <StaffManagement />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/stock"
-              element={
-                <ProtectedRoute allowedRoles={['admin_warehouse']}>
-                  <Stock />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/stock-history"
-              element={
-                <ProtectedRoute allowedRoles={['admin_warehouse']}>
-                  <StockHistory />
-                </ProtectedRoute>
-              }
-            />
+            >
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="inventory" element={<Inventory />} />
+              <Route path="sales" element={<SalesAnalysis />} />
+              <Route path="staff" element={<StaffManagement />} />
+              <Route path="stock" element={<Stock />} />
+              <Route path="stock-history" element={<StockHistory />} />
+            </Route>
 
             {/* Staff Routes - Kasir App UI */}
             <Route

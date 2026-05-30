@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { FaArrowLeft, FaChevronDown, FaChevronRight, FaSyncAlt } from 'react-icons/fa';
-import { Link } from 'react-router-dom';
+import { FaChevronDown, FaChevronRight, FaSyncAlt } from 'react-icons/fa';
 import { getTransactions } from '../../utils/transactions';
 import type { Transaction } from '../../utils/transactions';
 import { getTodayDate } from '../../utils/dateUtils';
@@ -188,12 +187,9 @@ export const SalesAnalysis = () => {
 
     return (
         <>
-        <div className="min-h-screen bg-gray-50 p-3 sm:p-8">
-            <div className="max-w-7xl mx-auto">
+        <div className="p-4 sm:p-6">
+            <div className="max-w-full mx-auto">
                 <div className="mb-6">
-                    <Link to="/admin/dashboard" className="text-primary-600 hover:text-primary-700 flex items-center gap-2 mb-2 font-medium text-sm">
-                        <FaArrowLeft /> Kembali ke Dashboard
-                    </Link>
                     <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Analisis Penjualan</h1>
                     <p className="text-sm text-gray-600">Data penjualan dari sistem POS Staff — real-time</p>
                     {localTx.length > 0 && (

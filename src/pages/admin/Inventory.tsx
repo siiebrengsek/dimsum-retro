@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
-import { FaBoxes, FaPlus, FaTrash, FaEdit, FaArrowLeft, FaTimes, FaSearch, FaSyncAlt } from 'react-icons/fa';
-import { Link } from 'react-router-dom';
+import { FaBoxes, FaPlus, FaTrash, FaEdit, FaTimes, FaSearch, FaSyncAlt } from 'react-icons/fa';
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
@@ -156,13 +155,10 @@ export const Inventory = () => {
 
     return (
         <>
-        <div className="min-h-screen bg-gray-50 p-3 sm:p-8">
-            <div className="max-w-7xl mx-auto">
+        <div className="p-4 sm:p-6">
+            <div className="max-w-full mx-auto">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8">
                     <div>
-                        <Link to="/admin/dashboard" className="text-primary-600 hover:text-primary-700 flex items-center gap-2 mb-2 font-medium text-sm sm:text-base">
-                            <FaArrowLeft /> Kembali ke Dashboard
-                        </Link>
                         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Stock Inventory</h1>
                         <p className="text-sm sm:text-base text-gray-600">Manajemen bahan baku dan perlengkapan warehouse</p>
                     </div>

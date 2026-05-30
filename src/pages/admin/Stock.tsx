@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../stores/auth.store';
-import { FaBox, FaPlus, FaTrash, FaEdit, FaArrowLeft, FaTimes, FaFileAlt, FaHistory, FaTruck, FaMinusCircle, FaSyncAlt } from 'react-icons/fa';
-import { Link } from 'react-router-dom';
+import { FaBox, FaPlus, FaTrash, FaEdit, FaTimes, FaFileAlt, FaHistory, FaTruck, FaMinusCircle, FaSyncAlt } from 'react-icons/fa';
 import { getTodayDate } from '../../utils/dateUtils';
 
 type Product = {
@@ -300,13 +299,10 @@ export const Stock = () => {
 
     return (
         <>
-        <div className="min-h-screen bg-gray-50 p-3 sm:p-8">
-            <div className="max-w-7xl mx-auto">
+        <div className="p-4 sm:p-6">
+            <div className="max-w-full mx-auto">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8">
                     <div>
-                        <Link to="/admin/dashboard" className="text-primary-600 hover:text-primary-700 flex items-center gap-2 mb-2 font-medium text-sm sm:text-base">
-                            <FaArrowLeft /> Kembali ke Dashboard
-                        </Link>
                         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Stock Dimsum</h1>
                         <p className="text-sm sm:text-base text-gray-600">Manajemen varian produk dimsum siap jual</p>
                     </div>

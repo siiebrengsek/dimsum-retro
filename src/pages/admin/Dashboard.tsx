@@ -3,9 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { getTransactions } from '../../utils/transactions';
 import type { Transaction } from '../../utils/transactions';
 import { getTodayDate } from '../../utils/dateUtils';
-import { FaBox, FaWarehouse, FaUsers, FaHistory, FaChevronDown, FaChevronRight, FaSignOutAlt, FaMoneyBillWave, FaSyncAlt } from 'react-icons/fa';
-import { useAuthStore } from '../../stores/auth.store';
-import { Link } from 'react-router-dom';
+import { FaBox, FaWarehouse, FaUsers, FaHistory, FaChevronDown, FaChevronRight, FaMoneyBillWave, FaSyncAlt } from 'react-icons/fa';
 
 type SaleRow = {
     id: string;
@@ -73,9 +71,6 @@ export const Dashboard = () => {
     const [collapsedStaff, setCollapsedStaff] = useState<Set<string>>(new Set());
     const [productSort, setProductSort] = useState<Record<string, { key: string; dir: 'asc' | 'desc' }>>({});
     const [isRefreshing, setIsRefreshing] = useState(false);
-
-    const profile = useAuthStore((s) => s.profile);
-    const signOut = useAuthStore((s) => s.signOut);
 
     const formatRupiah = (val: number) => `Rp ${val.toLocaleString('id-ID')}`;
     const isFiltered = selectedOutlet !== null;
@@ -407,29 +402,9 @@ export const Dashboard = () => {
     const outletStatusList = Array.from(outletStatuses.values());
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            <nav className="bg-white shadow-sm border-b">
-                <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-                    <div className="flex justify-between h-14 sm:h-16 items-center">
-                        <div className="flex items-center gap-2 min-w-0">
-                            <FaWarehouse className="text-primary-600 text-lg sm:text-2xl shrink-0" />
-                            <span className="font-bold text-base sm:text-xl text-gray-900 truncate">Super Dashboard</span>
-                        </div>
-                        <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-                            <span className="text-xs sm:text-sm text-gray-500 hidden xs:inline">
-                                <span className="font-semibold text-gray-900">{profile?.role}</span>
-                            </span>
-                            <button onClick={() => signOut()}
-                                className="flex items-center gap-1.5 text-xs sm:text-sm text-red-600 hover:text-red-700 font-medium transition-colors px-2 py-1.5 sm:px-3 sm:py-2 rounded-lg hover:bg-red-50"
-                            >
-                                <FaSignOutAlt /><span className="hidden xs:inline">Sign Out</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </nav>
-
-            <main className="max-w-7xl mx-auto py-4 sm:py-6 px-3 sm:px-6 lg:px-8">
+        <>
+        <div className="p-4 sm:p-6">
+            <div className="max-w-full mx-auto">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
                     <div>
                         <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
@@ -850,38 +825,11 @@ export const Dashboard = () => {
                                     </div>
                                 )}
 
-                                {/* Navigation */}
-                                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-6">
-                                    <div className="px-4 sm:px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-                                        <h3 className="font-bold text-gray-900 text-sm sm:text-base">Menu Halaman Admin</h3>
-                                    </div>
-                                    <div className="p-4 sm:p-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                                        {[
-                                            { to: '/admin/inventory', icon: FaBox, color: 'bg-blue-100 text-blue-600 group-hover:bg-blue-200', label: 'Inventory', desc: 'Bahan Baku' },
-                                            { to: '/admin/stock', icon: FaWarehouse, color: 'bg-green-100 text-green-600 group-hover:bg-green-200', label: 'Stock Dimsum', desc: 'Produk & Laporan Staff' },
-                                            { to: '/admin/sales', icon: FaHistory, color: 'bg-yellow-100 text-yellow-600 group-hover:bg-yellow-200', label: 'Sales Analysis', desc: 'Penjualan Per Staff' },
-                                            { to: '/admin/stock-history', icon: FaHistory, color: 'bg-orange-100 text-orange-600 group-hover:bg-orange-200', label: 'Stock History', desc: 'Packaging Staff' },
-                                            { to: '/admin/staff', icon: FaUsers, color: 'bg-purple-100 text-purple-600 group-hover:bg-purple-200', label: 'Staff Mgmt', desc: 'Atur Profil Staff' },
-                                        ].map(({ to, icon: Icon, color, label, desc }) => (
-                                            <Link key={to} to={to}
-                                                className="flex items-center gap-3 p-3 sm:p-4 rounded-xl border border-gray-100 hover:border-primary-200 hover:bg-primary-50/50 transition-all group"
-                                            >
-                                                <div className={`w-10 h-10 rounded-lg ${color} flex items-center justify-center transition-colors shrink-0`}>
-                                                    <Icon />
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <p className="text-sm font-bold text-gray-900 truncate">{label}</p>
-                                                    <p className="text-[10px] text-gray-400">{desc}</p>
-                                                </div>
-                                            </Link>
-                                        ))}
-                                    </div>
-                                </div>
                             </>
                         )}
                     </>
                 )}
-            </main>
+            </div>
 
             <button onClick={handleRefresh} disabled={isRefreshing}
                 className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-primary-600 text-white px-5 py-3.5 rounded-full shadow-lg hover:bg-primary-700 transition-all disabled:opacity-70"
@@ -891,5 +839,6 @@ export const Dashboard = () => {
                 <span className="text-sm font-semibold">Refresh</span>
             </button>
         </div>
+        </>
     );
 };
