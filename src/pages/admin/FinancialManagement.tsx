@@ -11,14 +11,14 @@ const COLUMNS = [
   { key: 'cicilan', label: 'Cicilan' },
 ] as const;
 
-type ColumnData = { saldo_kemarin: number; perubahan: number; perubahan2: number; saldo: number };
-type PendingStockItem = { name: string; stok_kemarin: number; perubahan: number; perubahan2: number; sisa_hari_ini: number };
+type ColumnData = { saldo_kemarin: number; perubahan: string; perubahan2: string; saldo: number };
+type PendingStockItem = { name: string; stok_kemarin: number; perubahan: string; perubahan2: string; sisa_hari_ini: number };
 type SetoranItem = { id: string; name: string; totalTerjual: string; setoranOnline: string };
 
 let idCounter = 0;
 const newId = () => `s${++idCounter}_${Date.now()}`;
 
-const emptyColumn = (): ColumnData => ({ saldo_kemarin: 0, perubahan: 0, perubahan2: 0, saldo: 0 });
+const emptyColumn = (): ColumnData => ({ saldo_kemarin: 0, perubahan: '0', perubahan2: '0', saldo: 0 });
 const emptySetoran = (): SetoranItem => ({ id: newId(), name: 'Setoran Cash', totalTerjual: '0', setoranOnline: '0' });
 
 const fmt = (val: number) =>
@@ -81,8 +81,8 @@ export const FinancialManagement = () => {
     for (const c of COLUMNS) {
       const col = columnData[c.key] || emptyColumn();
       t.saldo_kemarin += col.saldo_kemarin;
-      t.perubahan += col.perubahan;
-      t.perubahan2 += col.perubahan2;
+      t.perubahan += Number(col.perubahan) || 0;
+      t.perubahan2 += Number(col.perubahan2) || 0;
       t.saldo += col.saldo;
     }
     return t;
@@ -103,8 +103,8 @@ export const FinancialManagement = () => {
     const totals = sorted.reduce(
       (acc, item) => ({
         stok_kemarin: acc.stok_kemarin + item.stok_kemarin,
-        perubahan: acc.perubahan + item.perubahan,
-        perubahan2: acc.perubahan2 + item.perubahan2,
+        perubahan: acc.perubahan + (Number(item.perubahan) || 0),
+        perubahan2: acc.perubahan2 + (Number(item.perubahan2) || 0),
         sisa_hari_ini: acc.sisa_hari_ini + item.sisa_hari_ini,
       }),
       { stok_kemarin: 0, perubahan: 0, perubahan2: 0, sisa_hari_ini: 0 }
@@ -140,8 +140,8 @@ export const FinancialManagement = () => {
       for (const c of COLUMNS) {
         cols[c.key] = {
           saldo_kemarin: Number(r[`${c.key}_saldo_kemarin`] || 0),
-          perubahan: Number(r[`${c.key}_perubahan`] || 0),
-          perubahan2: Number(r[`${c.key}_perubahan2`] || 0),
+          perubahan: String(r[`${c.key}_perubahan`] ?? '0'),
+          perubahan2: String(r[`${c.key}_perubahan2`] ?? '0'),
           saldo: Number(r[`${c.key}_saldo`] || 0),
         };
       }
@@ -169,7 +169,7 @@ export const FinancialManagement = () => {
       const cols: Record<string, ColumnData> = {};
       for (const c of COLUMNS) {
         const prevVal = prev ? Number((prev as any)[`${c.key}_saldo`] || 0) : 0;
-        cols[c.key] = { saldo_kemarin: prevVal, perubahan: 0, perubahan2: 0, saldo: prevVal };
+        cols[c.key] = { saldo_kemarin: prevVal, perubahan: '0', perubahan2: '0', saldo: prevVal };
       }
       setColumnData(cols);
       setSetoranItems([emptySetoran()]);
@@ -183,11 +183,17 @@ export const FinancialManagement = () => {
       const r = existing as any;
       setStockReportId(r.id);
       if (Array.isArray(r.pending_stock_items) && r.pending_stock_items.length > 0) {
-        setPendingStock(r.pending_stock_items);
+        setPendingStock(r.pending_stock_items.map((s: any) => ({
+          name: s.name,
+          stok_kemarin: s.stok_kemarin || 0,
+          perubahan: String(s.perubahan ?? '0'),
+          perubahan2: String(s.perubahan2 ?? '0'),
+          sisa_hari_ini: s.sisa_hari_ini || 0,
+        })));
       } else {
         const invNames = await getInventoryNames();
         setInventoryRef(invNames);
-        setPendingStock(invNames.map(name => ({ name, stok_kemarin: 0, perubahan: 0, perubahan2: 0, sisa_hari_ini: 0 })));
+        setPendingStock(invNames.map(name => ({ name, stok_kemarin: 0, perubahan: '0', perubahan2: '0', sisa_hari_ini: 0 })));
       }
     } else {
       const yesterday = new Date(date);
@@ -202,7 +208,7 @@ export const FinancialManagement = () => {
       const invNames = await getInventoryNames();
       setInventoryRef(invNames);
       setPendingStock(invNames.map(name => ({
-        name, stok_kemarin: prevMap.get(name) || 0, perubahan: 0, perubahan2: 0, sisa_hari_ini: prevMap.get(name) || 0,
+        name, stok_kemarin: prevMap.get(name) || 0, perubahan: '0', perubahan2: '0', sisa_hari_ini: prevMap.get(name) || 0,
       })));
     }
   }, [getInventoryNames]);
@@ -215,11 +221,11 @@ export const FinancialManagement = () => {
 
   useEffect(() => { refreshAll(); }, [refreshAll]);
 
-  const handleStockChange = (index: number, field: 'perubahan' | 'perubahan2', value: number) => {
+  const handleStockChange = (index: number, field: 'perubahan' | 'perubahan2', value: string) => {
     setPendingStock(prev => {
       const next = [...prev];
       const item = { ...next[index], [field]: value };
-      item.sisa_hari_ini = item.stok_kemarin + item.perubahan + item.perubahan2;
+      item.sisa_hari_ini = item.stok_kemarin + (Number(item.perubahan) || 0) + (Number(item.perubahan2) || 0);
       next[index] = item;
       return next;
     });
@@ -228,7 +234,7 @@ export const FinancialManagement = () => {
   const addPendingItem = () => {
     const name = newItemName.trim();
     if (!name) return;
-    setPendingStock(prev => [...prev, { name, stok_kemarin: 0, perubahan: 0, perubahan2: 0, sisa_hari_ini: 0 }]);
+    setPendingStock(prev => [...prev, { name, stok_kemarin: 0, perubahan: '0', perubahan2: '0', sisa_hari_ini: 0 }]);
     setNewItemName('');
   };
 
@@ -268,8 +274,8 @@ export const FinancialManagement = () => {
     for (const c of COLUMNS) {
       const col = columnData[c.key] || emptyColumn();
       payload[`${c.key}_saldo_kemarin`] = col.saldo_kemarin;
-      payload[`${c.key}_perubahan`] = col.perubahan;
-      payload[`${c.key}_perubahan2`] = col.perubahan2;
+      payload[`${c.key}_perubahan`] = Number(col.perubahan) || 0;
+      payload[`${c.key}_perubahan2`] = Number(col.perubahan2) || 0;
       payload[`${c.key}_saldo`] = col.saldo;
     }
     if (globalReportId) {
@@ -319,7 +325,7 @@ export const FinancialManagement = () => {
 
   const renderNumInput = (val: string, onChange: (v: string) => void, cls = '') => (
     <input type="text" inputMode="numeric" value={val}
-      onFocus={() => { if (val === '0') onChange(''); }}
+      onFocus={e => e.target.select()}
       onChange={e => { const raw = e.target.value; if (raw === '' || raw === '-' || /^-?\d*$/.test(raw)) onChange(raw); }}
       onBlur={() => { if (val === '' || val === '-') onChange('0'); }}
       className={`rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500 text-sm ${cls || 'w-24 sm:w-28 text-right'}`}
@@ -428,7 +434,7 @@ export const FinancialManagement = () => {
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="px-4 sm:px-6 py-4 border-b border-gray-100 bg-gray-50/50">
                   <h2 className="font-bold text-gray-900 text-sm sm:text-base">5 Kolom Keuangan</h2>
-                  <p className="text-xs text-gray-500">Saldo = Saldo Kemarin + Perubahan</p>
+                  <p className="text-xs text-gray-500">Saldo = Saldo Kemarin + Perubahan 1 + Perubahan 2</p>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left">
@@ -449,23 +455,21 @@ export const FinancialManagement = () => {
                             <td className="px-4 sm:px-6 py-3 text-sm font-semibold text-gray-900 whitespace-nowrap">{c.label}</td>
                             <td className="px-3 py-3 text-right text-sm text-gray-600">{fmt(col.saldo_kemarin)}</td>
                             <td className="px-3 py-3 text-right">
-                              {renderNumInput(String(col.perubahan), v => {
-                                const val = Number(v) || 0;
+                              {renderNumInput(col.perubahan, v => {
                                 setColumnData(prev => {
                                   const x = { ...prev[c.key] };
-                                  x.perubahan = val;
-                                  x.saldo = x.saldo_kemarin + val + x.perubahan2;
+                                  x.perubahan = v;
+                                  x.saldo = x.saldo_kemarin + (Number(v) || 0) + (Number(x.perubahan2) || 0);
                                   return { ...prev, [c.key]: x };
                                 });
                               })}
                             </td>
                             <td className="px-3 py-3 text-right">
-                              {renderNumInput(String(col.perubahan2), v => {
-                                const val = Number(v) || 0;
+                              {renderNumInput(col.perubahan2, v => {
                                 setColumnData(prev => {
                                   const x = { ...prev[c.key] };
-                                  x.perubahan2 = val;
-                                  x.saldo = x.saldo_kemarin + x.perubahan + val;
+                                  x.perubahan2 = v;
+                                  x.saldo = x.saldo_kemarin + (Number(x.perubahan) || 0) + (Number(v) || 0);
                                   return { ...prev, [c.key]: x };
                                 });
                               })}
@@ -567,10 +571,10 @@ export const FinancialManagement = () => {
                                 <td className="px-4 py-3 text-sm font-semibold text-gray-900 whitespace-nowrap">{item.name}</td>
                                 <td className="px-3 py-3 text-right text-sm text-gray-600">{fmtNum(item.stok_kemarin)}</td>
                                 <td className="px-3 py-3 text-right">
-                                  {renderNumInput(String(item.perubahan), v => handleStockChange(realIndex, 'perubahan', Number(v) || 0))}
+                                  {renderNumInput(item.perubahan, v => handleStockChange(realIndex, 'perubahan', v))}
                                 </td>
                                 <td className="px-3 py-3 text-right">
-                                  {renderNumInput(String(item.perubahan2), v => handleStockChange(realIndex, 'perubahan2', Number(v) || 0))}
+                                  {renderNumInput(item.perubahan2, v => handleStockChange(realIndex, 'perubahan2', v))}
                                 </td>
                                 <td className="px-3 py-3 text-right text-sm font-bold text-primary-600">{fmtNum(item.sisa_hari_ini)}</td>
                                 <td className="px-3 py-3 text-right">
