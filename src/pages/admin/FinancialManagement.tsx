@@ -319,6 +319,7 @@ export const FinancialManagement = () => {
 
   const renderNumInput = (val: string, onChange: (v: string) => void, cls = '') => (
     <input type="text" inputMode="numeric" value={val}
+      onFocus={() => { if (val === '0') onChange(''); }}
       onChange={e => { const raw = e.target.value; if (raw === '' || raw === '-' || /^-?\d*$/.test(raw)) onChange(raw); }}
       onBlur={() => { if (val === '' || val === '-') onChange('0'); }}
       className={`rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500 text-sm ${cls || 'w-24 sm:w-28 text-right'}`}
