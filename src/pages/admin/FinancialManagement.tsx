@@ -12,7 +12,7 @@ const COLUMNS = [
 ] as const;
 
 type ColumnData = { saldo_kemarin: number; perubahan: number; perubahan2: number; saldo: number };
-type PendingStockItem = { name: string; stok_kemarin: number; perubahan: number; sisa_hari_ini: number };
+type PendingStockItem = { name: string; stok_kemarin: number; perubahan: number; perubahan2: number; sisa_hari_ini: number };
 type SetoranItem = { id: string; name: string; totalTerjual: string; setoranOnline: string };
 
 let idCounter = 0;
@@ -104,9 +104,10 @@ export const FinancialManagement = () => {
       (acc, item) => ({
         stok_kemarin: acc.stok_kemarin + item.stok_kemarin,
         perubahan: acc.perubahan + item.perubahan,
+        perubahan2: acc.perubahan2 + item.perubahan2,
         sisa_hari_ini: acc.sisa_hari_ini + item.sisa_hari_ini,
       }),
-      { stok_kemarin: 0, perubahan: 0, sisa_hari_ini: 0 }
+      { stok_kemarin: 0, perubahan: 0, perubahan2: 0, sisa_hari_ini: 0 }
     );
     return { filteredStock: sorted, stockTotals: totals };
   }, [pendingStock, stockSearch, stockSortKey, stockSortDir]);
@@ -186,7 +187,7 @@ export const FinancialManagement = () => {
       } else {
         const invNames = await getInventoryNames();
         setInventoryRef(invNames);
-        setPendingStock(invNames.map(name => ({ name, stok_kemarin: 0, perubahan: 0, sisa_hari_ini: 0 })));
+        setPendingStock(invNames.map(name => ({ name, stok_kemarin: 0, perubahan: 0, perubahan2: 0, sisa_hari_ini: 0 })));
       }
     } else {
       const yesterday = new Date(date);
@@ -201,7 +202,7 @@ export const FinancialManagement = () => {
       const invNames = await getInventoryNames();
       setInventoryRef(invNames);
       setPendingStock(invNames.map(name => ({
-        name, stok_kemarin: prevMap.get(name) || 0, perubahan: 0, sisa_hari_ini: prevMap.get(name) || 0,
+        name, stok_kemarin: prevMap.get(name) || 0, perubahan: 0, perubahan2: 0, sisa_hari_ini: prevMap.get(name) || 0,
       })));
     }
   }, [getInventoryNames]);
@@ -214,10 +215,12 @@ export const FinancialManagement = () => {
 
   useEffect(() => { refreshAll(); }, [refreshAll]);
 
-  const handleStockChange = (index: number, value: number) => {
+  const handleStockChange = (index: number, field: 'perubahan' | 'perubahan2', value: number) => {
     setPendingStock(prev => {
       const next = [...prev];
-      next[index] = { ...next[index], perubahan: value, sisa_hari_ini: next[index].stok_kemarin + value };
+      const item = { ...next[index], [field]: value };
+      item.sisa_hari_ini = item.stok_kemarin + item.perubahan + item.perubahan2;
+      next[index] = item;
       return next;
     });
   };
@@ -225,7 +228,7 @@ export const FinancialManagement = () => {
   const addPendingItem = () => {
     const name = newItemName.trim();
     if (!name) return;
-    setPendingStock(prev => [...prev, { name, stok_kemarin: 0, perubahan: 0, sisa_hari_ini: 0 }]);
+    setPendingStock(prev => [...prev, { name, stok_kemarin: 0, perubahan: 0, perubahan2: 0, sisa_hari_ini: 0 }]);
     setNewItemName('');
   };
 
@@ -549,7 +552,8 @@ export const FinancialManagement = () => {
                               className="px-3 py-3 text-xs font-bold text-gray-500 uppercase text-right cursor-pointer select-none hover:text-primary-600">
                               Stok Kemarin <SortIcon active={stockSortKey === 'stok_kemarin'} dir={stockSortDir} />
                             </th>
-                            <th className="px-3 py-3 text-xs font-bold text-gray-500 uppercase text-right">Perubahan (+/-)</th>
+                            <th className="px-3 py-3 text-xs font-bold text-gray-500 uppercase text-right">Perubahan 1 (+/-)</th>
+                            <th className="px-3 py-3 text-xs font-bold text-gray-500 uppercase text-right">Perubahan 2 (+/-)</th>
                             <th className="px-3 py-3 text-xs font-bold text-gray-900 uppercase text-right">Sisa Hari Ini</th>
                             <th className="px-3 py-3 w-10" />
                           </tr>
@@ -562,7 +566,10 @@ export const FinancialManagement = () => {
                                 <td className="px-4 py-3 text-sm font-semibold text-gray-900 whitespace-nowrap">{item.name}</td>
                                 <td className="px-3 py-3 text-right text-sm text-gray-600">{fmtNum(item.stok_kemarin)}</td>
                                 <td className="px-3 py-3 text-right">
-                                  {renderNumInput(String(item.perubahan), v => handleStockChange(realIndex, Number(v) || 0))}
+                                  {renderNumInput(String(item.perubahan), v => handleStockChange(realIndex, 'perubahan', Number(v) || 0))}
+                                </td>
+                                <td className="px-3 py-3 text-right">
+                                  {renderNumInput(String(item.perubahan2), v => handleStockChange(realIndex, 'perubahan2', Number(v) || 0))}
                                 </td>
                                 <td className="px-3 py-3 text-right text-sm font-bold text-primary-600">{fmtNum(item.sisa_hari_ini)}</td>
                                 <td className="px-3 py-3 text-right">
@@ -577,6 +584,7 @@ export const FinancialManagement = () => {
                             <td className="px-4 py-3 text-sm font-extrabold text-gray-900">Total</td>
                             <td className="px-3 py-3 text-right text-sm font-bold text-gray-800">{fmtNum(stockTotals.stok_kemarin)}</td>
                             <td className="px-3 py-3 text-right text-sm font-bold text-gray-800">{fmtNum(stockTotals.perubahan)}</td>
+                            <td className="px-3 py-3 text-right text-sm font-bold text-gray-800">{fmtNum(stockTotals.perubahan2)}</td>
                             <td className="px-3 py-3 text-right text-sm font-extrabold text-primary-700">{fmtNum(stockTotals.sisa_hari_ini)}</td>
                             <td />
                           </tr>
