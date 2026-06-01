@@ -11,14 +11,14 @@ const COLUMNS = [
   { key: 'cicilan', label: 'Cicilan' },
 ] as const;
 
-type ColumnData = { saldo_kemarin: number; perubahan: number; saldo: number };
+type ColumnData = { saldo_kemarin: number; perubahan: number; perubahan2: number; saldo: number };
 type PendingStockItem = { name: string; stok_kemarin: number; perubahan: number; sisa_hari_ini: number };
 type SetoranItem = { id: string; name: string; totalTerjual: string; setoranOnline: string };
 
 let idCounter = 0;
 const newId = () => `s${++idCounter}_${Date.now()}`;
 
-const emptyColumn = (): ColumnData => ({ saldo_kemarin: 0, perubahan: 0, saldo: 0 });
+const emptyColumn = (): ColumnData => ({ saldo_kemarin: 0, perubahan: 0, perubahan2: 0, saldo: 0 });
 const emptySetoran = (): SetoranItem => ({ id: newId(), name: 'Setoran Cash', totalTerjual: '0', setoranOnline: '0' });
 
 const fmt = (val: number) =>
@@ -76,6 +76,18 @@ export const FinancialManagement = () => {
   const totalSetoran = useMemo(() =>
     hasilSetoran.reduce((sum, h) => sum + h.hasil, 0), [hasilSetoran]);
 
+  const kolomTotals = useMemo(() => {
+    const t = { saldo_kemarin: 0, perubahan: 0, perubahan2: 0, saldo: 0 };
+    for (const c of COLUMNS) {
+      const col = columnData[c.key] || emptyColumn();
+      t.saldo_kemarin += col.saldo_kemarin;
+      t.perubahan += col.perubahan;
+      t.perubahan2 += col.perubahan2;
+      t.saldo += col.saldo;
+    }
+    return t;
+  }, [columnData]);
+
   const { filteredStock, stockTotals } = useMemo(() => {
     let list = pendingStock;
     if (stockSearch.trim()) {
@@ -128,6 +140,7 @@ export const FinancialManagement = () => {
         cols[c.key] = {
           saldo_kemarin: Number(r[`${c.key}_saldo_kemarin`] || 0),
           perubahan: Number(r[`${c.key}_perubahan`] || 0),
+          perubahan2: Number(r[`${c.key}_perubahan2`] || 0),
           saldo: Number(r[`${c.key}_saldo`] || 0),
         };
       }
@@ -155,7 +168,7 @@ export const FinancialManagement = () => {
       const cols: Record<string, ColumnData> = {};
       for (const c of COLUMNS) {
         const prevVal = prev ? Number((prev as any)[`${c.key}_saldo`] || 0) : 0;
-        cols[c.key] = { saldo_kemarin: prevVal, perubahan: 0, saldo: prevVal };
+        cols[c.key] = { saldo_kemarin: prevVal, perubahan: 0, perubahan2: 0, saldo: prevVal };
       }
       setColumnData(cols);
       setSetoranItems([emptySetoran()]);
@@ -253,6 +266,7 @@ export const FinancialManagement = () => {
       const col = columnData[c.key] || emptyColumn();
       payload[`${c.key}_saldo_kemarin`] = col.saldo_kemarin;
       payload[`${c.key}_perubahan`] = col.perubahan;
+      payload[`${c.key}_perubahan2`] = col.perubahan2;
       payload[`${c.key}_saldo`] = col.saldo;
     }
     if (globalReportId) {
@@ -418,7 +432,8 @@ export const FinancialManagement = () => {
                       <tr>
                         <th className="px-4 sm:px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Kolom</th>
                         <th className="px-3 py-3 text-xs font-bold text-gray-500 uppercase text-right">Saldo Kemarin</th>
-                        <th className="px-3 py-3 text-xs font-bold text-gray-500 uppercase text-right">Perubahan (+/-)</th>
+                        <th className="px-3 py-3 text-xs font-bold text-gray-500 uppercase text-right">Perubahan 1 (+/-)</th>
+                        <th className="px-3 py-3 text-xs font-bold text-gray-500 uppercase text-right">Perubahan 2 (+/-)</th>
                         <th className="px-3 py-3 text-xs font-bold text-gray-900 uppercase text-right">Saldo Hari Ini</th>
                       </tr>
                     </thead>
@@ -435,7 +450,18 @@ export const FinancialManagement = () => {
                                 setColumnData(prev => {
                                   const x = { ...prev[c.key] };
                                   x.perubahan = val;
-                                  x.saldo = x.saldo_kemarin + val;
+                                  x.saldo = x.saldo_kemarin + val + x.perubahan2;
+                                  return { ...prev, [c.key]: x };
+                                });
+                              })}
+                            </td>
+                            <td className="px-3 py-3 text-right">
+                              {renderNumInput(String(col.perubahan2), v => {
+                                const val = Number(v) || 0;
+                                setColumnData(prev => {
+                                  const x = { ...prev[c.key] };
+                                  x.perubahan2 = val;
+                                  x.saldo = x.saldo_kemarin + x.perubahan + val;
                                   return { ...prev, [c.key]: x };
                                 });
                               })}
@@ -445,6 +471,15 @@ export const FinancialManagement = () => {
                         );
                       })}
                     </tbody>
+                    <tfoot className="bg-gray-50/80 border-t border-gray-100">
+                      <tr>
+                        <td className="px-4 sm:px-6 py-3 text-sm font-extrabold text-gray-900">Total</td>
+                        <td className="px-3 py-3 text-right text-sm font-bold text-gray-800">{fmt(kolomTotals.saldo_kemarin)}</td>
+                        <td className="px-3 py-3 text-right text-sm font-bold text-gray-800">{fmt(kolomTotals.perubahan)}</td>
+                        <td className="px-3 py-3 text-right text-sm font-bold text-gray-800">{fmt(kolomTotals.perubahan2)}</td>
+                        <td className="px-3 py-3 text-right text-sm font-extrabold text-primary-700">{fmt(kolomTotals.saldo)}</td>
+                      </tr>
+                    </tfoot>
                   </table>
                 </div>
               </div>
