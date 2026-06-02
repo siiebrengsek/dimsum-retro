@@ -40,8 +40,8 @@ const products: Product[] = [
   { name: 'Dimsum  3pcs', category: 'Original', description: 'Dimsum kukus isi 5pcs dengan toping mix', badgeRight: '', price: 'Rp. 9.000', image: dimsumImages.dimsumSingle },
   { name: 'Dimsum  5pcs', category: 'Original', description: 'Dimsum kukus isi 5pcs dengan toping mix', badgeRight: '', price: 'Rp. 15.000', image: dimsumImages.dimsumSingle },
   { name: 'Dimsum Couple 12pcs', category: 'Original', description: 'Dimsum kukus isi 12pcs dengan toping mix', badgeRight: 'Best Seller', price: 'Rp. 36.000', image: dimsumImages.dimsumCouple },
-  { name: 'Dimsum Family', category: 'Original', description: 'Dimsum kukus isi 20pcs dengan toping mix', badgeRight: 'Best Seller', price: 'Rp. 36.000', image: dimsumImages.dimsumFamily },
-  { name: 'Dimsum Brotherhood', category: 'Original', description: 'Dimsum kukus isi 24pcs dengan toping mix', badgeRight: 'Best Seller', price: 'Rp. 72.000', image: dimsumImages.dimsumBrotherhood },
+  { name: 'Dimsum Family 20pcs', category: 'Original', description: 'Dimsum kukus isi 20pcs dengan toping mix', badgeRight: 'Best Seller', price: 'Rp. 60.000', image: dimsumImages.dimsumFamily },
+  { name: 'Dimsum Brotherhood 24pcs', category: 'Original', description: 'Dimsum kukus isi 24pcs dengan toping mix', badgeRight: 'Best Seller', price: 'Rp. 72.000', image: dimsumImages.dimsumBrotherhood },
   { name: 'Dimsum Mentai 4pcs', category: 'Dimsum Mentai', description: 'Dimsum Kukus dengan saus mentai', badgeRight: 'Best Seller', badgeLeft: 'Free Chili Oil', price: 'Rp. 20.000', image: dimsumImages.dimsumMentai4pcs },
   { name: 'Dimsum Mentai 6pcs', category: 'Dimsum Mentai', description: 'Dimsum Kukus dengan saus mentai', badgeRight: 'Best Seller', badgeLeft: 'Free Chili Oil', price: 'Rp. 30.000', image: dimsumImages.dimsumMentai6pcs },
   { name: 'Dimsum Mentai 16pcs', category: 'Dimsum Mentai', description: 'Dimsum Kukus dengan saus mentai', badgeRight: 'Best Seller', badgeLeft: 'Free Chili Oil', price: 'Rp. 80.000', image: dimsumImages.dimsumMentai16pcs },
@@ -85,6 +85,7 @@ export const Dashboard = () => {
   const [showCart, setShowCart] = useState(false);
   const [toast, setToast] = useState('');
   const [alert, setAlert] = useState<{ type: 'info' | 'error' | 'success'; title: string; message: string } | null>(null);
+  const [confirmBayarOpen, setConfirmBayarOpen] = useState(false);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -103,7 +104,7 @@ export const Dashboard = () => {
   const changeNumeric = cashNumeric - totalPriceNumeric;
   const isValidCash = cashNumeric >= totalPriceNumeric;
 
-  const handleBayar = async () => {
+  const handleConfirmBayar = () => {
     if (items.length === 0) {
       setAlert({ type: 'info', title: 'Keranjang Kosong', message: 'Belum ada item di keranjang.' });
       return;
@@ -112,6 +113,11 @@ export const Dashboard = () => {
       setAlert({ type: 'info', title: 'Tunai Kurang', message: 'Jumlah tunai tidak mencukupi!' });
       return;
     }
+    setConfirmBayarOpen(true);
+  };
+
+  const handleBayar = async () => {
+    setConfirmBayarOpen(false);
 
     const transactionItems = items.map((item) => ({
       productName: item.name,
@@ -284,7 +290,7 @@ export const Dashboard = () => {
           updateQuantity={updateQuantity}
           removeFromCart={removeFromCart}
           clearCart={clearCart}
-          handleBayar={handleBayar}
+          handleBayar={handleConfirmBayar}
           formatPrice={formatPrice}
         />
       </div>
@@ -333,7 +339,7 @@ export const Dashboard = () => {
               updateQuantity={updateQuantity}
               removeFromCart={removeFromCart}
               clearCart={clearCart}
-              handleBayar={handleBayar}
+              handleBayar={handleConfirmBayar}
               formatPrice={formatPrice}
             />
           </div>
@@ -347,8 +353,60 @@ export const Dashboard = () => {
       title={alert?.title || ''}
       message={alert?.message || ''}
       onClose={() => setAlert(null)}
-    /></>
-  );
+    />
+
+    {confirmBayarOpen && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={() => setConfirmBayarOpen(false)}>
+        <div className="bg-[#1A1A2E] rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+          <div className="p-5 border-b border-[#303050] text-center">
+            <div className="text-3xl mb-2">📋</div>
+            <h3 className="text-white text-lg font-black">Konfirmasi Pembayaran</h3>
+          </div>
+
+          <div className="p-5 max-h-60 overflow-y-auto space-y-2">
+            {items.map((item) => (
+              <div key={item.id} className="flex justify-between items-center bg-[#111118] rounded-xl px-3 py-2">
+                <div className="flex-1 min-w-0 mr-2">
+                  <p className="text-white text-sm font-semibold truncate">{item.name}</p>
+                  <p className="text-[#888] text-xs">{item.quantity} x {formatPrice(getNumericPrice(item.price))}</p>
+                </div>
+                <p className="text-[#F5A623] text-sm font-bold shrink-0">{formatPrice(getNumericPrice(item.price) * item.quantity)}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="px-5 pb-2 flex justify-between items-center border-b border-[#303050]">
+            <span className="text-[#888] text-sm">Total</span>
+            <span className="text-white font-black text-xl">{getTotalPrice()}</span>
+          </div>
+
+          <div className="px-5 py-4 text-center border-b border-[#303050]">
+            <p className="text-[#888] text-xs mb-1">Metode Pembayaran</p>
+            <p className="text-[#F5A623] font-black text-2xl uppercase tracking-wide">
+              {paymentIcons[paymentMethod]} {paymentMethod === 'shoppe' ? 'Shopee' : paymentMethod === 'gofood' ? 'GoFood' : paymentMethod}
+            </p>
+          </div>
+
+          {paymentMethod === 'tunai' && (
+            <div className="px-5 py-3 flex justify-between bg-[#111118]">
+              <span className="text-[#888] text-sm">Kembali</span>
+              <span className="text-green-400 font-bold">{formatPrice(changeNumeric)}</span>
+            </div>
+          )}
+
+          <div className="flex gap-3 p-5">
+            <button onClick={() => setConfirmBayarOpen(false)} className="flex-1 bg-[#252540] text-white font-bold py-3 rounded-xl hover:bg-[#303050] transition text-sm min-h-[44px]">
+              Batal
+            </button>
+            <button onClick={handleBayar} className="flex-1 bg-[#F5A623] text-white font-bold py-3 rounded-xl hover:bg-orange-600 transition text-sm min-h-[44px]">
+              Konfirmasi
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+  </>
+);
 };
 
 const CartPanel = ({
@@ -408,6 +466,33 @@ const CartPanel = ({
       {paymentMethod === 'tunai' && (
         <div>
           <p className="text-[#888] text-xs mb-1">Jumlah Tunai</p>
+          {totalPriceNumeric > 0 && (
+            <div className="flex gap-2 mb-2">
+              <button
+                onClick={() => setCashAmount(cashNumeric === totalPriceNumeric ? '' : String(totalPriceNumeric))}
+                className={`flex-1 py-2 rounded-xl text-xs font-bold transition min-h-[36px] ${
+                  cashNumeric === totalPriceNumeric
+                    ? 'bg-green-600 text-white'
+                    : 'bg-[#1A1A2E] text-green-400 border border-green-500/30 hover:bg-[#252540]'
+                }`}
+              >
+                {cashNumeric === totalPriceNumeric ? 'Reset' : 'Uang Pas'}
+              </button>
+            </div>
+          )}
+          {paymentMethod === 'tunai' && (
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {[1000, 2000, 5000, 10000, 20000, 50000].map((nominal) => (
+                <button
+                  key={nominal}
+                  onClick={() => setCashAmount(String((cashNumeric || 0) + nominal))}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#1A1A2E] text-[#F5A623] border border-[#F5A623]/30 hover:bg-[#252540] transition min-h-[32px]"
+                >
+                  +Rp{nominal.toLocaleString('id-ID')}
+                </button>
+              ))}
+            </div>
+          )}
           <input
             type="text"
             value={cashAmount}

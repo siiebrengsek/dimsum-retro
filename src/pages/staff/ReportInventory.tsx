@@ -4,6 +4,7 @@ import { useAuthStore } from '../../stores/auth.store';
 import { ConfirmModal } from '../../components/ConfirmModal';
 import { AlertModal } from '../../components/AlertModal';
 import { addToQueue } from '../../utils/offlineQueue';
+import { getTodayDate } from '../../utils/dateUtils';
 
 const STORAGE_KEY = 'dimsum_inventory_pemakaian';
 
@@ -15,6 +16,7 @@ export const ReportInventory = () => {
     const [alert, setAlert] = useState<{ type: 'info' | 'error' | 'success'; title: string; message: string } | null>(null);
     const [showHistory, setShowHistory] = useState(false);
     const user = useAuthStore((s) => s.user);
+    const profile = useAuthStore((s) => s.profile);
 
     const [pemakaian, setPemakaian] = useState<Record<string, string>>({});
 
@@ -94,6 +96,19 @@ export const ReportInventory = () => {
                     .eq('id', update.id);
 
                 if (updateErr) throw updateErr;
+
+                const outlet = (profile as any)?.outlet || 'Unknown';
+                await supabase.from('inventory_mutations').insert([{
+                    inventory_id: update.id,
+                    item_name: update.name,
+                    type: 'pemakaian',
+                    quantity: update.pakai,
+                    stock_before: update.stokAwal,
+                    stock_after: newStock,
+                    source: 'inventory_report',
+                    report_date: getTodayDate(),
+                    outlet,
+                }]);
 
                 historyLog.push({
                     item_name: update.name,

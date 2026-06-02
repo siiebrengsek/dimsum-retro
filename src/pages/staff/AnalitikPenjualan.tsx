@@ -23,17 +23,18 @@ export const AnalitikPenjualan = () => {
     const user = useAuthStore((s) => s.user);
     const [sales, setSales] = useState<SaleRow[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [selectedDate, setSelectedDate] = useState(getTodayDate());
 
     useEffect(() => {
         if (!user) return;
         const fetchSales = async () => {
-            const today = getTodayDate();
+            setIsLoading(true);
             try {
                 const { data, error } = await supabase
                     .from('sales')
                     .select('*')
                     .eq('staff_id', user.id)
-                    .eq('transaction_date', today)
+                    .eq('transaction_date', selectedDate)
                     .order('created_at', { ascending: false });
                 if (error) throw error;
                 setSales(data || []);
@@ -44,7 +45,7 @@ export const AnalitikPenjualan = () => {
             }
         };
         fetchSales();
-    }, [user]);
+    }, [user, selectedDate]);
 
     const totalOmset = sales.reduce((sum, s) => sum + Number(s.amount || 0), 0);
     const totalTransaksi = sales.length;
@@ -91,9 +92,15 @@ export const AnalitikPenjualan = () => {
         <div className="p-4 sm:p-6 max-w-5xl mx-auto">
             <div className="mb-6">
                 <h1 className="text-xl sm:text-2xl font-bold text-white">Analitik Penjualan</h1>
-                <p className="text-sm text-gray-400">
-                    Ringkasan penjualan hari ini, {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                <p className="text-sm text-gray-400 mb-3">
+                    Ringkasan penjualan
                 </p>
+                <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="bg-[#1A1A2E] border border-[#303050] text-white rounded-xl px-4 py-2.5 text-sm focus:border-[#F5A623] outline-none"
+                />
             </div>
 
             {isLoading ? (

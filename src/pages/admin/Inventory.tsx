@@ -19,6 +19,8 @@ export const Inventory = () => {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [inventoryMutations, setInventoryMutations] = useState<any[]>([]);
     const [isMutationsLoading, setIsMutationsLoading] = useState(false);
+    const [mutationDateStart, setMutationDateStart] = useState('');
+    const [mutationDateEnd, setMutationDateEnd] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -155,6 +157,17 @@ export const Inventory = () => {
         });
         return result;
     }, [stock, searchQuery, selectedLetter, sortKey, sortDir, statusFilter]);
+
+    const filteredMutations = useMemo(() => {
+        let result = inventoryMutations;
+        if (mutationDateStart) {
+            result = result.filter((m) => m.report_date && m.report_date >= mutationDateStart);
+        }
+        if (mutationDateEnd) {
+            result = result.filter((m) => m.report_date && m.report_date <= mutationDateEnd);
+        }
+        return result;
+    }, [inventoryMutations, mutationDateStart, mutationDateEnd]);
 
     const toggleSort = (key: 'name' | 'quantity') => {
         if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -345,17 +358,51 @@ export const Inventory = () => {
                         <h2 className="font-bold text-gray-900 text-lg">Riwayat Pemakaian Bahan</h2>
                     </div>
 
+                    <div className="px-6 py-3 border-b border-gray-50 flex flex-col sm:flex-row gap-3">
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs text-gray-500 font-medium">Dari</label>
+                            <input
+                                type="date"
+                                value={mutationDateStart}
+                                onChange={(e) => setMutationDateStart(e.target.value)}
+                                className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:ring-primary-500 focus:border-primary-500"
+                            />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs text-gray-500 font-medium">Sampai</label>
+                            <input
+                                type="date"
+                                value={mutationDateEnd}
+                                onChange={(e) => setMutationDateEnd(e.target.value)}
+                                className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:ring-primary-500 focus:border-primary-500"
+                            />
+                        </div>
+                        {(mutationDateStart || mutationDateEnd) && (
+                            <button
+                                onClick={() => { setMutationDateStart(''); setMutationDateEnd(''); }}
+                                className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+                            >
+                                Reset filter
+                            </button>
+                        )}
+                    </div>
+
                     {isMutationsLoading ? (
                         <div className="p-12 flex justify-center">
                             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600" />
                         </div>
-                    ) : inventoryMutations.length === 0 ? (
+                    ) : filteredMutations.length === 0 ? (
                         <div className="p-12 text-center text-gray-500">
                             <FaHistory className="mx-auto text-4xl mb-4 opacity-20" />
-                            Belum ada riwayat pemakaian bahan.
+                            {(mutationDateStart || mutationDateEnd)
+                                ? 'Tidak ada riwayat untuk rentang tanggal yang dipilih.'
+                                : 'Belum ada riwayat pemakaian bahan.'}
                         </div>
                     ) : (
                         <>
+                            <div className="px-6 py-2 text-xs text-gray-500 border-b border-gray-50">
+                                Menampilkan {filteredMutations.length} dari {inventoryMutations.length} riwayat
+                            </div>
                             <div className="hidden sm:block overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
                                     <thead className="bg-gray-50/50 border-b border-gray-100">
@@ -371,7 +418,7 @@ export const Inventory = () => {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-50">
-                                        {inventoryMutations.map((m) => (
+                                        {filteredMutations.map((m) => (
                                             <tr key={m.id} className="hover:bg-gray-50 transition-colors">
                                                 <td className="px-6 py-4 text-sm text-gray-500">
                                                     {new Date(m.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
@@ -395,7 +442,7 @@ export const Inventory = () => {
                                 </table>
                             </div>
                             <div className="sm:hidden divide-y divide-gray-50">
-                                {inventoryMutations.map((m) => (
+                                {filteredMutations.map((m) => (
                                     <div key={m.id} className="p-4">
                                         <div className="flex justify-between items-start mb-2">
                                             <div>
