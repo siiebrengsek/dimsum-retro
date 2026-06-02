@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
-import { FaBoxes, FaPlus, FaTrash, FaEdit, FaTimes, FaSearch, FaSyncAlt, FaHistory, FaMinusCircle, FaTruck } from 'react-icons/fa';
+import { FaBoxes, FaPlus, FaTrash, FaEdit, FaTimes, FaSearch, FaSyncAlt, FaHistory, FaMinusCircle } from 'react-icons/fa';
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 

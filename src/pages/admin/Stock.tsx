@@ -291,7 +291,7 @@ export const Stock = () => {
     const handleCloseModal = () => {
         setIsModalOpen(false);
         setEditingId(null);
-        setFormData({ name: '', category: 'Original', price: '', description: '', image: '' });
+        setFormData({ name: '', category: 'Original', price: '', description: '', image: '', stock: 0 });
     };
 
     const handleDeleteProduct = async (id: string) => {
