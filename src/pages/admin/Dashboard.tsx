@@ -306,20 +306,28 @@ export const Dashboard = () => {
     // Produk Terjual breakdown per metode bayar
     const produkTerjualList = useMemo(() => {
         const map = new Map<string, { tunai: number; gojek: number; grab: number; shoppe: number; qris: number; total: number }>();
-        for (const s of filteredSales) {
-            const pm = s.payment_method === 'gofood' ? 'gojek' : s.payment_method;
-            const items = s.items_json || [];
+        const addItems = (pm: string, items: any[]) => {
+            const m = paymentMethodMap[pm] || pm;
+            if (!(m in ({ tunai: 1, gojek: 1, grab: 1, shoppe: 1, qris: 1 }))) return;
             for (const item of items) {
                 const name = item.productName || item.name || 'Unknown';
                 if (!map.has(name)) map.set(name, { tunai: 0, gojek: 0, grab: 0, shoppe: 0, qris: 0, total: 0 });
                 const entry = map.get(name)!;
                 const qty = Number(item.quantity) || 0;
-                if (pm in entry) (entry as any)[pm] += qty;
+                (entry as any)[m] += qty;
                 entry.total += qty;
+            }
+        };
+        for (const s of filteredSales) {
+            addItems(s.payment_method, s.items_json || []);
+        }
+        if (!isFiltered) {
+            for (const t of localTx) {
+                addItems(t.paymentMethod, t.items);
             }
         }
         return Array.from(map.entries()).map(([name, vals]) => ({ name, ...vals })).sort((a, b) => b.total - a.total);
-    }, [filteredSales]);
+    }, [filteredSales, localTx, isFiltered]);
 
     const topProducts = produkTerjualList.slice(0, 5);
 
