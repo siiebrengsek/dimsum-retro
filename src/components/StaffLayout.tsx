@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState } from 'react';
 import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth.store';
 import { SyncIndicator } from './SyncIndicator';
@@ -9,24 +9,11 @@ export const StaffLayout = () => {
     const navigate = useNavigate();
     const signOut = useAuthStore((s) => s.signOut);
     const profile = useAuthStore((s) => s.profile);
-    const touchStartX = useRef(0);
 
     const handleLogout = async () => {
         await signOut();
         navigate('/login');
     };
-
-    const handleTouchStart = useCallback((e: React.TouchEvent) => {
-        touchStartX.current = e.touches[0].clientX;
-    }, []);
-
-    const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-        const delta = e.changedTouches[0].clientX - touchStartX.current;
-        if (Math.abs(delta) > 60) {
-            if (delta > 0) setSidebarOpen(true);
-            else setSidebarOpen(false);
-        }
-    }, []);
 
     const navItems = [
         { path: '/staff/dashboard', icon: '🛒', label: 'Kasir / POS' },
@@ -37,11 +24,7 @@ export const StaffLayout = () => {
     ];
 
     return (
-        <div
-            className="flex h-screen bg-[#0D0D0D] text-white"
-            onTouchStart={handleTouchStart}
-            onTouchEnd={handleTouchEnd}
-        >
+        <div className="flex h-screen bg-[#0D0D0D] text-white">
             {/* Mobile overlay */}
             {sidebarOpen && (
                 <div
@@ -56,10 +39,7 @@ export const StaffLayout = () => {
                 flex flex-col pt-6 transition-transform duration-300 ease-in-out w-72
                 lg:translate-x-0
                 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-            `}
-                onTouchStart={handleTouchStart}
-                onTouchEnd={handleTouchEnd}
-            >
+            `}>
                 {/* Close button (mobile only) */}
                 <button
                     onClick={() => setSidebarOpen(false)}
@@ -126,12 +106,12 @@ export const StaffLayout = () => {
 
             {/* Main Content Area */}
             <div className="flex-1 overflow-y-auto relative">
-                {/* Hamburger button (mobile only) */}
+                {/* Toggle sidebar button — visible on mobile, fixed on scroll */}
                 <button
                     onClick={() => setSidebarOpen(!sidebarOpen)}
-                    className="lg:hidden absolute top-3 left-3 z-20 w-10 h-10 rounded-xl bg-[#1A1A2E] flex items-center justify-center hover:bg-[#252540] transition text-white text-lg"
+                    className="lg:hidden fixed top-1/2 -translate-y-1/2 left-3 z-50 w-8 h-8 rounded-lg bg-[#1A1A2E] flex items-center justify-center hover:bg-[#252540] transition text-white text-sm"
                 >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+                    {sidebarOpen ? '❮' : '❯'}
                 </button>
                 <Outlet />
                 <SyncIndicator />
