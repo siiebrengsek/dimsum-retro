@@ -44,8 +44,30 @@ export const processQueue = async (): Promise<{ success: number; failed: number 
         try {
             let error = null;
             if (item.operation === 'insert') {
-                const { error: e } = await supabase.from(item.table).insert(item.payload);
+                const { inventory_decrements, ...payload } = item.payload;
+                const { error: e } = await supabase.from(item.table).insert(payload);
                 error = e;
+                if (!error && inventory_decrements) {
+                    for (const dec of inventory_decrements) {
+                        const { data: inv } = await supabase.from('inventory').select('quantity, item_name').eq('id', dec.id).maybeSingle();
+                        if (inv) {
+                            const stockBefore = Number(inv.quantity);
+                            const newQty = Math.max(0, stockBefore - dec.terpakai);
+                            await supabase.from('inventory').update({ quantity: newQty }).eq('id', dec.id);
+                            await supabase.from('inventory_mutations').insert([{
+                                inventory_id: dec.id,
+                                item_name: inv.item_name,
+                                type: 'pemakaian',
+                                quantity: dec.terpakai,
+                                stock_before: stockBefore,
+                                stock_after: newQty,
+                                source: 'packaging_report',
+                                report_date: payload.report_date || null,
+                                outlet: dec.outlet || '',
+                            }]);
+                        }
+                    }
+                }
             } else if (item.operation === 'update') {
                 const { id, ...rest } = item.payload;
                 const { error: e } = await supabase.from(item.table).update(rest).eq('id', id);

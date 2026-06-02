@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
-import { FaBoxes, FaPlus, FaTrash, FaEdit, FaTimes, FaSearch, FaSyncAlt } from 'react-icons/fa';
+import { FaBoxes, FaPlus, FaTrash, FaEdit, FaTimes, FaSearch, FaSyncAlt, FaHistory, FaMinusCircle, FaTruck } from 'react-icons/fa';
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
@@ -17,6 +17,8 @@ export const Inventory = () => {
     const [stock, setStock] = useState<StockItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [inventoryMutations, setInventoryMutations] = useState<any[]>([]);
+    const [isMutationsLoading, setIsMutationsLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -50,8 +52,25 @@ export const Inventory = () => {
         }
     };
 
+    const fetchMutations = async () => {
+        setIsMutationsLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('inventory_mutations')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(100);
+            if (error) throw error;
+            setInventoryMutations(data || []);
+        } catch {
+        } finally {
+            setIsMutationsLoading(false);
+        }
+    };
+
     useEffect(() => {
         fetchStock();
+        fetchMutations();
     }, []);
 
     const handleSaveStock = async (e: React.FormEvent) => {
@@ -318,6 +337,88 @@ export const Inventory = () => {
                         </>
                     )}
                 </div>
+
+                {/* Inventory Mutation History */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-8">
+                    <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
+                        <FaHistory className="text-primary-600" />
+                        <h2 className="font-bold text-gray-900 text-lg">Riwayat Pemakaian Bahan</h2>
+                    </div>
+
+                    {isMutationsLoading ? (
+                        <div className="p-12 flex justify-center">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600" />
+                        </div>
+                    ) : inventoryMutations.length === 0 ? (
+                        <div className="p-12 text-center text-gray-500">
+                            <FaHistory className="mx-auto text-4xl mb-4 opacity-20" />
+                            Belum ada riwayat pemakaian bahan.
+                        </div>
+                    ) : (
+                        <>
+                            <div className="hidden sm:block overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead className="bg-gray-50/50 border-b border-gray-100">
+                                        <tr>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Tanggal</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Tipe</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Barang</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Jumlah</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Stok Awal</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Stok Akhir</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Outlet</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Tanggal Laporan</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {inventoryMutations.map((m) => (
+                                            <tr key={m.id} className="hover:bg-gray-50 transition-colors">
+                                                <td className="px-6 py-4 text-sm text-gray-500">
+                                                    {new Date(m.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
+                                                        <FaMinusCircle /> Pemakaian
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-sm font-medium text-gray-900">{m.item_name}</td>
+                                                <td className="px-6 py-4 text-right text-sm font-bold text-red-600">-{m.quantity}</td>
+                                                <td className="px-6 py-4 text-right text-sm text-gray-500">{m.stock_before}</td>
+                                                <td className="px-6 py-4 text-right text-sm font-semibold text-gray-900">{m.stock_after}</td>
+                                                <td className="px-6 py-4 text-sm text-gray-500">{m.outlet || '-'}</td>
+                                                <td className="px-6 py-4 text-sm text-gray-500">
+                                                    {m.report_date ? new Date(m.report_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div className="sm:hidden divide-y divide-gray-50">
+                                {inventoryMutations.map((m) => (
+                                    <div key={m.id} className="p-4">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div>
+                                                <span className="font-bold text-gray-900 text-sm">{m.item_name}</span>
+                                                <span className="text-xs text-gray-500 ml-2">
+                                                    {new Date(m.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                                                </span>
+                                            </div>
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                                <FaMinusCircle /> -{m.quantity}
+                                            </span>
+                                        </div>
+                                        <div className="text-xs text-gray-500 flex flex-wrap gap-x-3">
+                                            <span>Stok: {m.stock_before} → {m.stock_after}</span>
+                                            {m.outlet && <span>Outlet: {m.outlet}</span>}
+                                            {m.report_date && <span>Tgl: {new Date(m.report_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</span>}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </>
+                    )}
+                </div>
             </div>
 
             {isModalOpen && (
@@ -397,8 +498,12 @@ export const Inventory = () => {
             onClick={async () => {
                 setIsRefreshing(true);
                 try {
-                    const { data } = await supabase.from('inventory').select('*').order('item_name');
-                    if (data) setStock(data);
+                    const [stockRes, mutRes] = await Promise.all([
+                        supabase.from('inventory').select('*').order('item_name'),
+                        supabase.from('inventory_mutations').select('*').order('created_at', { ascending: false }).limit(100),
+                    ]);
+                    if (stockRes.data) setStock(stockRes.data);
+                    if (mutRes.data) setInventoryMutations(mutRes.data);
                 } catch {}
                 setIsRefreshing(false);
             }}

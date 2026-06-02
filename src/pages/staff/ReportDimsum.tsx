@@ -95,6 +95,7 @@ export const ReportDimsum = () => {
     const [stockHariIni, setStockHariIni] = useState<LocalData>({});
     const [sisa, setSisa] = useState<LocalData>({});
     const [submittedHistory, setSubmittedHistory] = useState<any[]>([]);
+    const [inventoryMap, setInventoryMap] = useState<Record<number, string[]>>({});
 
     const loadLocalData = useCallback(() => {
         try {
@@ -165,12 +166,24 @@ export const ReportDimsum = () => {
     const fetchPackagingItems = async () => {
         setIsPackagingLoading(true);
         try {
-            const { data, error } = await supabase
-                .from('packaging_items')
-                .select('*')
-                .order('name');
-            if (error) throw error;
-            setPackagingItems(data || []);
+            const [packRes, invRes] = await Promise.all([
+                supabase.from('packaging_items').select('*').order('name'),
+                supabase.from('inventory').select('id, item_name'),
+            ]);
+            if (packRes.error) throw packRes.error;
+            setPackagingItems(packRes.data || []);
+
+            // Build mapping: packaging item name -> inventory IDs
+            const map: Record<number, string[]> = {};
+            const invItems = invRes.data || [];
+            for (const p of packRes.data || []) {
+                const name = (p.name || '').toLowerCase();
+                const matched = invItems
+                    .filter((inv) => inv.item_name.toLowerCase().includes(name))
+                    .map((inv) => inv.id);
+                if (matched.length > 0) map[p.id] = matched;
+            }
+            setInventoryMap(map);
         } catch (err: any) {
             console.error(err);
             setAlert({ type: 'error', title: 'Gagal', message: 'Gagal memuat daftar barang - ' + err.message });
@@ -415,6 +428,31 @@ export const ReportDimsum = () => {
             const { error } = await supabase.from('packaging_reports').insert(inserts);
             if (error) throw error;
 
+            // Also update inventory: kurangi stok & catat mutasi
+            for (const r of rows) {
+                if (r.terpakai <= 0) continue;
+                const invIds = inventoryMap[r.item_id] || [];
+                for (const invId of invIds) {
+                    const { data: inv } = await supabase.from('inventory').select('quantity, item_name').eq('id', invId).maybeSingle();
+                    if (inv) {
+                        const stockBefore = Number(inv.quantity);
+                        const newQty = Math.max(0, stockBefore - r.terpakai);
+                        await supabase.from('inventory').update({ quantity: newQty }).eq('id', invId);
+                        await supabase.from('inventory_mutations').insert([{
+                            inventory_id: invId,
+                            item_name: inv.item_name,
+                            type: 'pemakaian',
+                            quantity: r.terpakai,
+                            stock_before: stockBefore,
+                            stock_after: newQty,
+                            source: 'packaging_report',
+                            report_date: getTodayDate(),
+                            outlet,
+                        }]);
+                    }
+                }
+            }
+
             setAlert({ type: 'success', title: 'Berhasil!', message: 'Laporan stock packaging berhasil dikirim ke Warehouse.' });
             clearPackagingLocalData();
             setStockHariIni({});
@@ -425,12 +463,15 @@ export const ReportDimsum = () => {
             for (const item of packagingItems) {
                 const stockHariIniVal = Number(stockHariIni[item.id]) || 0;
                 if (stockHariIniVal > 0) {
+                    const terpakai = Math.max(0, stockHariIniVal - (Number(sisa[item.id]) || 0));
+                    const invIds = inventoryMap[item.id] || [];
                     addToQueue('packaging_reports', 'insert', {
                         staff_id: user!.id, item_id: item.id, outlet: (profile as any)?.outlet || 'Unknown',
                         report_date: getTodayDate(),
                         stock_hari_ini: stockHariIniVal,
                         sisa: Number(sisa[item.id]) || 0,
-                        terpakai: Math.max(0, stockHariIniVal - (Number(sisa[item.id]) || 0)),
+                        terpakai,
+                        inventory_decrements: invIds.map((id) => ({ id, terpakai, item_name: item.name, outlet: (profile as any)?.outlet || 'Unknown' })),
                     });
                 }
             }
