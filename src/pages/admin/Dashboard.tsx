@@ -511,31 +511,31 @@ export const Dashboard = () => {
                                         <thead className="bg-gray-50/50 border-b border-gray-100">
                                             <tr>
                                                 <th className="px-4 sm:px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Produk</th>
+                                                <th className="px-3 py-3 text-xs font-bold text-primary-700 uppercase text-right">Total</th>
                                                 {paymentColumns.map((pm) => (
                                                     <th key={pm.key} className="px-3 py-3 text-xs font-bold text-gray-500 uppercase text-right">{pm.label}</th>
                                                 ))}
-                                                <th className="px-3 py-3 text-xs font-bold text-gray-900 uppercase text-right">Total</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-50">
                                             {produkTerjualList.map((p) => (
                                                 <tr key={p.name} className="hover:bg-gray-50 transition-colors">
                                                     <td className="px-4 sm:px-6 py-3 text-sm font-semibold text-gray-900">{p.name}</td>
+                                                    <td className="px-3 py-3 text-right text-sm font-bold text-primary-700">{p.total}</td>
                                                     {paymentColumns.map((pm) => (
                                                         <td key={pm.key} className="px-3 py-3 text-right text-sm text-gray-700">{(p as any)[pm.key] || '-'}</td>
                                                     ))}
-                                                    <td className="px-3 py-3 text-right text-sm font-bold text-primary-600">{p.total}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
                                         <tfoot className="bg-gray-50/80">
                                             <tr>
                                                 <td className="px-4 sm:px-6 py-3 text-sm font-bold text-gray-900">Total</td>
+                                                <td className="px-3 py-3 text-right text-sm font-bold text-primary-700">{produkTerjualList.reduce((s, p) => s + p.total, 0)}</td>
                                                 {paymentColumns.map((pm) => {
                                                     const total = produkTerjualList.reduce((s, p) => s + ((p as any)[pm.key] || 0), 0);
                                                     return <td key={pm.key} className="px-3 py-3 text-right text-sm font-bold text-gray-900">{total}</td>;
                                                 })}
-                                                <td className="px-3 py-3 text-right text-sm font-bold text-primary-600">{produkTerjualList.reduce((s, p) => s + p.total, 0)}</td>
                                             </tr>
                                         </tfoot>
                                     </table>
