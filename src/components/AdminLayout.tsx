@@ -117,7 +117,7 @@ export const AdminLayout = () => {
             </div>
 
             {/* Main Content Area */}
-            <div className="flex-1 overflow-y-auto relative">
+            <div className="flex-1 overflow-y-auto relative bg-gray-50">
                 {/* Toggle sidebar button — visible on mobile, fixed on scroll */}
                 <button
                     onClick={() => setSidebarOpen(!sidebarOpen)}

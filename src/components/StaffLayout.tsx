@@ -105,7 +105,7 @@ export const StaffLayout = () => {
             </div>
 
             {/* Main Content Area */}
-            <div className="flex-1 overflow-y-auto relative">
+            <div className="flex-1 overflow-y-auto relative bg-[#0D0D0D]">
                 {/* Toggle sidebar button — visible on mobile, fixed on scroll */}
                 <button
                     onClick={() => setSidebarOpen(!sidebarOpen)}
