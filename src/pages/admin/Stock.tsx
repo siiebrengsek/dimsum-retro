@@ -50,6 +50,7 @@ export const Stock = () => {
         price: '',
         description: '',
         image: '',
+        stock: 0,
     });
 
     const [reports, setReports] = useState<StockReport[]>([]);
@@ -232,11 +233,28 @@ export const Stock = () => {
         setIsSubmitting(true);
         try {
             if (editingId) {
+                const product = products.find(p => p.id === editingId);
+                const oldStock = product ? Number(product.stock) || 0 : 0;
+                const newStock = Number(formData.stock) || 0;
+
                 const { error } = await supabase
                     .from('products')
                     .update(formData)
                     .eq('id', editingId);
                 if (error) throw error;
+
+                if (oldStock !== newStock) {
+                    const diff = newStock - oldStock;
+                    await supabase.from('stock_mutations').insert([{
+                        product_id: Number(editingId),
+                        type: diff > 0 ? 'barang_masuk' : 'terjual',
+                        quantity: Math.abs(diff),
+                        stock_before: oldStock,
+                        stock_after: newStock,
+                        note: 'Edit manual oleh admin',
+                        created_by: user?.id,
+                    }]);
+                }
             } else {
                 const { error } = await supabase
                     .from('products')
@@ -246,8 +264,9 @@ export const Stock = () => {
 
             setIsModalOpen(false);
             setEditingId(null);
-            setFormData({ name: '', category: 'Original', price: '', description: '', image: '' });
+            setFormData({ name: '', category: 'Original', price: '', description: '', image: '', stock: 0 });
             fetchProducts();
+            fetchMutations();
         } catch (error: any) {
             console.error('Error saving product:', error);
             alert(`Gagal menyimpan dimsum: ${error.message || 'Error tidak diketahui'}`);
@@ -264,6 +283,7 @@ export const Stock = () => {
             price: product.price,
             description: product.description,
             image: product.image,
+            stock: product.stock || 0,
         });
         setIsModalOpen(true);
     };
@@ -712,6 +732,17 @@ export const Stock = () => {
                                         placeholder="Rp 25.000"
                                     />
                                 </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Stok <span className="text-xs text-gray-500 font-normal">(default 0)</span></label>
+                                <input
+                                    required
+                                    type="number"
+                                    min="0"
+                                    value={formData.stock}
+                                    onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })}
+                                    className="w-full rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500"
+                                />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
