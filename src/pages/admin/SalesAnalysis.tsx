@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { FaChevronDown, FaChevronRight, FaSyncAlt } from 'react-icons/fa';
+import { FaChevronDown, FaChevronRight, FaFileAlt, FaSyncAlt } from 'react-icons/fa';
 import { getTransactions } from '../../utils/transactions';
 import type { Transaction } from '../../utils/transactions';
 import { getTodayDate } from '../../utils/dateUtils';
@@ -28,6 +28,18 @@ type StaffSummary = {
     count: number;
 };
 
+type StockReport = {
+    id: string;
+    product_name: string;
+    stock_bawaan: number;
+    sisa_dimsum: number;
+    terjual: number;
+    reported_by: string;
+    report_date: string;
+    created_at: string;
+    profiles?: { outlet?: string } | null;
+};
+
 const paymentMethodMap: Record<string, string> = {
     tunai: 'tunai',
     gofood: 'gojek',
@@ -44,6 +56,8 @@ export const SalesAnalysis = () => {
     const [collapsedStaff, setCollapsedStaff] = useState<Set<string>>(new Set());
     const [productSort, setProductSort] = useState<Record<string, { key: string; dir: 'asc' | 'desc' }>>({});
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [reports, setReports] = useState<StockReport[]>([]);
+    const [isReportsLoading, setIsReportsLoading] = useState(true);
 
     const fetchLocalSales = (date: string) => {
         const all = getTransactions();
@@ -88,6 +102,63 @@ export const SalesAnalysis = () => {
             }
         };
         fetchData();
+    }, [selectedDate]);
+
+    const dedupeReports = (items: StockReport[]): StockReport[] => {
+        const seen = new Map<string, StockReport>();
+        for (const r of items) {
+            const outlet = r.profiles?.outlet || r.reported_by;
+            const key = `${r.product_name}|${outlet}|${r.report_date}`;
+            const existing = seen.get(key);
+            if (!existing ||
+                new Date(r.created_at).getTime() > new Date(existing.created_at).getTime() ||
+                (new Date(r.created_at).getTime() === new Date(existing.created_at).getTime() && r.id > existing.id)) {
+                seen.set(key, r);
+            }
+        }
+        return Array.from(seen.values()).sort((a, b) => {
+            const timeDiff = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+            if (timeDiff !== 0) return timeDiff;
+            return Number(b.id) - Number(a.id);
+        });
+    };
+
+    const fetchReports = async () => {
+        setIsReportsLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('stock_reports')
+                .select('*')
+                .eq('report_date', selectedDate)
+                .order('report_date', { ascending: false })
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            const enriched = await Promise.all((data || []).map(async (r) => {
+                let outlet: string | null = null;
+                if (r.reported_by) {
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('outlet')
+                        .eq('id', r.reported_by)
+                        .maybeSingle();
+                    outlet = profile?.outlet || null;
+                }
+                return { ...r, profiles: outlet ? { outlet } : null };
+            }));
+
+            const deduped = dedupeReports(enriched as StockReport[]);
+            setReports(deduped);
+        } catch (error) {
+            console.error('Error fetching reports:', error);
+        } finally {
+            setIsReportsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchReports();
     }, [selectedDate]);
 
     const totals = {
@@ -258,6 +329,54 @@ export const SalesAnalysis = () => {
                     </div>
                 ) : (
                     <>
+                        {/* Laporan dari Staff */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+                            <div className="px-4 sm:px-6 py-4 border-b border-gray-100 flex items-center gap-3">
+                                <FaFileAlt className="text-primary-600" />
+                                <h2 className="font-bold text-gray-900 text-lg">Laporan dari Staff</h2>
+                            </div>
+
+                            {isReportsLoading ? (
+                                <div className="p-12 flex justify-center">
+                                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600" />
+                                </div>
+                            ) : reports.length === 0 ? (
+                                <div className="p-12 text-center text-gray-500">
+                                    <FaFileAlt className="mx-auto text-4xl mb-4 opacity-20" />
+                                    Belum ada laporan dari staff untuk tanggal ini.
+                                </div>
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead className="bg-gray-50/50 border-b border-gray-100">
+                                            <tr>
+                                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Produk</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Stok Bawaan</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Sisa</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Terjual</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Outlet</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-50">
+                                            {reports.map((report) => (
+                                                <tr key={report.id} className="hover:bg-gray-50 transition-colors">
+                                                    <td className="px-6 py-4 font-medium text-gray-900">{report.product_name}</td>
+                                                    <td className="px-6 py-4 text-gray-700">{report.stock_bawaan}</td>
+                                                    <td className="px-6 py-4 text-gray-700">{report.sisa_dimsum}</td>
+                                                    <td className="px-6 py-4">
+                                                        <span className="font-semibold text-primary-600">{report.terjual}</span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-sm text-gray-500">
+                                                        {report.profiles?.outlet || '-'}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+
                         {/* Per-Staff Table */}
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
                             <div className="px-4 sm:px-6 py-4 border-b border-gray-100 bg-gray-50/50">
@@ -447,10 +566,11 @@ export const SalesAnalysis = () => {
                     }));
                     setSales(enriched as any);
                 } catch {}
+                await fetchReports();
                 setIsRefreshing(false);
             }}
             disabled={isRefreshing}
-            className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-primary-600 text-white px-5 py-3.5 rounded-full shadow-lg hover:bg-primary-700 transition-all disabled:opacity-70"
+            className="fixed bottom-6 left-6 z-50 flex items-center gap-2 bg-primary-600 text-white px-5 py-3.5 rounded-full shadow-lg hover:bg-primary-700 transition-all disabled:opacity-70"
             title="Refresh data"
         >
             <FaSyncAlt className={isRefreshing ? 'animate-spin' : ''} />
