@@ -222,7 +222,21 @@ export const FinancialManagement = () => {
     setIsLoading(false);
   }, [selectedDate, stockOutlet, loadGlobalData, loadStockData]);
 
-  useEffect(() => { refreshAll(); }, [refreshAll]);
+  // Initial load + date change → reload both
+  useEffect(() => {
+    setIsLoading(true);
+    Promise.all([
+      loadGlobalData(selectedDate),
+      stockOutlet ? loadStockData(selectedDate, stockOutlet) : Promise.resolve(),
+    ]).finally(() => setIsLoading(false));
+  }, [selectedDate]);
+
+  // Outlet change → reload stock only (preserve 5 Kolom Keuangan data)
+  useEffect(() => {
+    if (stockOutlet) {
+      loadStockData(selectedDate, stockOutlet);
+    }
+  }, [stockOutlet]);
 
   const handleStockChange = (index: number, field: 'perubahan' | 'perubahan2' | 'perubahan3', value: string) => {
     setPendingStock(prev => {
