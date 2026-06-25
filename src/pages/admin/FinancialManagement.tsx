@@ -83,6 +83,7 @@ export const FinancialManagement = () => {
       t.saldo_kemarin += col.saldo_kemarin;
       t.perubahan += Number(col.perubahan) || 0;
       t.perubahan2 += Number(col.perubahan2) || 0;
+      t.perubahan3 += Number(col.perubahan3) || 0;
       t.saldo += col.saldo;
     }
     return t;
