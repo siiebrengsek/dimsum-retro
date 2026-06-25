@@ -30,6 +30,15 @@ const fmtNum = (val: number) => val.toLocaleString('id-ID');
 
 const numOr0 = (s: string) => Math.max(0, Number(s) || 0);
 
+const dateOffset = (dateStr: string, offset: number) => {
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + offset);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
 const loadReportByOutlet = async (date: string, outlet: string) => {
   const { data } = await supabase
     .from('financial_reports')
@@ -164,9 +173,7 @@ export const FinancialManagement = () => {
         }]);
       }
     } else {
-      const yesterday = new Date(date);
-      yesterday.setDate(yesterday.getDate() - 1);
-      const prev = await loadReportByOutlet(yesterday.toISOString().split('T')[0], '');
+      const prev = await loadReportByOutlet(dateOffset(date, -1), '');
 
       setGlobalReportId(null);
       const cols: Record<string, ColumnData> = {};
@@ -200,9 +207,7 @@ export const FinancialManagement = () => {
         setPendingStock(invNames.map(name => ({ name, stok_kemarin: 0, perubahan: '0', perubahan2: '0', perubahan3: '0', sisa_hari_ini: 0 })));
       }
     } else {
-      const yesterday = new Date(date);
-      yesterday.setDate(yesterday.getDate() - 1);
-      const prev = await loadReportByOutlet(yesterday.toISOString().split('T')[0], outlet);
+      const prev = await loadReportByOutlet(dateOffset(date, -1), outlet);
 
       setStockReportId(null);
       const prevStock = prev ? (prev as any).pending_stock_items || [] : [];
