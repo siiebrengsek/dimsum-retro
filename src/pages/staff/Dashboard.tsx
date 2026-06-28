@@ -42,7 +42,9 @@ const products: Product[] = [
   { name: 'Dimsum Couple 12pcs', category: 'Original', description: 'Dimsum kukus isi 12pcs dengan toping mix', badgeRight: 'Best Seller', price: 'Rp. 36.000', image: dimsumImages.dimsumCouple },
   { name: 'Dimsum Family 20pcs', category: 'Original', description: 'Dimsum kukus isi 20pcs dengan toping mix', badgeRight: 'Best Seller', price: 'Rp. 60.000', image: dimsumImages.dimsumFamily },
   { name: 'Dimsum Brotherhood 24pcs', category: 'Original', description: 'Dimsum kukus isi 24pcs dengan toping mix', badgeRight: 'Best Seller', price: 'Rp. 72.000', image: dimsumImages.dimsumBrotherhood },
+  { name: 'Dimsum Mentai 1pcs', category: 'Dimsum Mentai', description: 'Dimsum Kukus dengan saus mentai', badgeRight: 'Best Seller', badgeLeft: 'Free Chili Oil', price: 'Rp. 5.000', image: dimsumImages.dimsumMentai4pcs },
   { name: 'Dimsum Mentai 4pcs', category: 'Dimsum Mentai', description: 'Dimsum Kukus dengan saus mentai', badgeRight: 'Best Seller', badgeLeft: 'Free Chili Oil', price: 'Rp. 20.000', image: dimsumImages.dimsumMentai4pcs },
+   { name: 'Dimsum Mentai 5pcs', category: 'Dimsum Mentai', description: 'Dimsum Kukus dengan saus mentai', badgeRight: 'Best Seller', badgeLeft: 'Free Chili Oil', price: 'Rp. 25.000', image: dimsumImages.dimsumMentai4pcs },
   { name: 'Dimsum Mentai 6pcs', category: 'Dimsum Mentai', description: 'Dimsum Kukus dengan saus mentai', badgeRight: 'Best Seller', badgeLeft: 'Free Chili Oil', price: 'Rp. 30.000', image: dimsumImages.dimsumMentai6pcs },
   { name: 'Dimsum Mentai 16pcs', category: 'Dimsum Mentai', description: 'Dimsum Kukus dengan saus mentai', badgeRight: 'Best Seller', badgeLeft: 'Free Chili Oil', price: 'Rp. 80.000', image: dimsumImages.dimsumMentai16pcs },
   { name: 'Dimsum Bakar 4pcs', category: 'New Arival', description: 'Dimsum kukus yang di bakar dengan saus BBQ', badgeRight: 'New', badgeLeft: 'Free Chili Oil', price: 'Rp. 20.000', image: dimsumImages.dimsumBakar4pcs },
@@ -58,6 +60,8 @@ const products: Product[] = [
   { name: 'Dimsum Mentai Ucapan', category: 'New Arival', description: 'Dimsum dengan saus mentai untuk acara', badgeRight: 'New', price: 'Rp. 110.000', image: dimsumImages.dimsumUcapan },
   { name: 'Teh Poci', category: 'Es', description: 'Es teh original tanpa bahan pengawet', badgeRight: 'Fresh', price: 'Rp. 4.000', image: dimsumImages.tehPoci },
   { name: 'Teh Poci Promo', category: 'Es', description: 'Es teh original tanpa bahan pengawet', badgeRight: 'Fresh', price: 'Rp. 10.000', image: dimsumImages.tehPoci },
+  { name: 'Teh Poci Rau', category: 'Es', description: 'Es teh original tanpa bahan pengawet', badgeRight: 'Fresh', price: 'Rp. 2.000', image: dimsumImages.tehPoci },
+  { name: 'Teh Poci Rau 2', category: 'Es', description: 'Es teh original tanpa bahan pengawet', badgeRight: 'Fresh', price: 'Rp. 3.000', image: dimsumImages.tehPoci },
 ];
 
 const categories = ['Semua', 'Original', 'Dimsum Mentai', 'New Arival', 'Toping', 'Es'];
