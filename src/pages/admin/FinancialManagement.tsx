@@ -641,27 +641,30 @@ export const FinancialManagement = () => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
-                <div>
-                  {saveMessage === 'saved' && (
-                    <span className="text-sm text-green-600 font-semibold bg-green-50 px-3 py-1.5 rounded-lg border border-green-100">Laporan tersimpan!</span>
-                  )}
-                  {saveMessage === 'error' && (
-                    <span className="text-sm text-red-600 font-semibold bg-red-50 px-3 py-1.5 rounded-lg border border-red-100">Gagal menyimpan. Coba lagi.</span>
-                  )}
-                </div>
-                <button onClick={handleSave} disabled={isSaving} className="btn-primary flex items-center gap-2 text-sm px-6 py-2.5">
-                  <FaSave className={isSaving ? 'animate-spin' : ''} />
-                  {isSaving ? 'Menyimpan...' : 'Simpan Laporan'}
-                </button>
-              </div>
             </div>
           )}
         </div>
       </div>
 
+      <div className="sticky bottom-0 bg-white border-t border-gray-200 z-30 px-4 sm:px-6 py-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+        <div className="max-w-full mx-auto flex items-center justify-between">
+          <div>
+            {saveMessage === 'saved' && (
+              <span className="text-sm text-green-600 font-semibold bg-green-50 px-3 py-1.5 rounded-lg border border-green-100">Laporan tersimpan!</span>
+            )}
+            {saveMessage === 'error' && (
+              <span className="text-sm text-red-600 font-semibold bg-red-50 px-3 py-1.5 rounded-lg border border-red-100">Gagal menyimpan. Coba lagi.</span>
+            )}
+          </div>
+          <button onClick={handleSave} disabled={isSaving} className="btn-primary flex items-center gap-2 text-sm px-6 py-2.5">
+            <FaSave className={isSaving ? 'animate-spin' : ''} />
+            {isSaving ? 'Menyimpan...' : 'Simpan Laporan'}
+          </button>
+        </div>
+      </div>
+
       <button onClick={handleRefresh} disabled={isRefreshing}
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-primary-600 text-white px-5 py-3.5 rounded-full shadow-lg hover:bg-primary-700 transition-all disabled:opacity-70"
+        className="fixed bottom-6 left-6 z-50 flex items-center gap-2 bg-primary-600 text-white px-5 py-3.5 rounded-full shadow-lg hover:bg-primary-700 transition-all disabled:opacity-70"
         title="Refresh data">
         <FaSyncAlt className={isRefreshing ? 'animate-spin' : ''} />
         <span className="text-sm font-semibold">Refresh</span>

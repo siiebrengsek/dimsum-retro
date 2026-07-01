@@ -269,7 +269,7 @@ export const StaffManagement = () => {
                 setIsRefreshing(false);
             }}
             disabled={isRefreshing}
-            className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-primary-600 text-white px-5 py-3.5 rounded-full shadow-lg hover:bg-primary-700 transition-all disabled:opacity-70"
+            className="fixed bottom-6 left-6 z-50 flex items-center gap-2 bg-primary-600 text-white px-5 py-3.5 rounded-full shadow-lg hover:bg-primary-700 transition-all disabled:opacity-70"
             title="Refresh data"
         >
             <FaSyncAlt className={isRefreshing ? 'animate-spin' : ''} />
