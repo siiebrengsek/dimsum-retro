@@ -191,6 +191,7 @@ export const Dashboard = () => {
                 .from('inventory_mutations')
                 .select('*')
                 .eq('report_date', date)
+                .eq('source', 'inventory_report')
                 .gt('quantity', 0)
                 .order('created_at', { ascending: false });
             setMutations(data || []);
