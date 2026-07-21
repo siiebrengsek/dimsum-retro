@@ -60,6 +60,7 @@ export const Inventory = () => {
             const { data, error } = await supabase
                 .from('inventory_mutations')
                 .select('*')
+                .eq('source', 'inventory_report')
                 .order('created_at', { ascending: false })
                 .limit(100);
             if (error) throw error;
@@ -547,7 +548,7 @@ export const Inventory = () => {
                 try {
                     const [stockRes, mutRes] = await Promise.all([
                         supabase.from('inventory').select('*').order('item_name'),
-                        supabase.from('inventory_mutations').select('*').order('created_at', { ascending: false }).limit(100),
+                        supabase.from('inventory_mutations').select('*').eq('source', 'inventory_report').order('created_at', { ascending: false }).limit(100),
                     ]);
                     if (stockRes.data) setStock(stockRes.data);
                     if (mutRes.data) setInventoryMutations(mutRes.data);
