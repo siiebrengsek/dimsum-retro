@@ -71,6 +71,8 @@ export const Dashboard = () => {
     const [collapsedStaff, setCollapsedStaff] = useState<Set<string>>(new Set());
     const [productSort, setProductSort] = useState<Record<string, { key: string; dir: 'asc' | 'desc' }>>({});
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+    const [mutations, setMutations] = useState<any[]>([]);
 
     const formatRupiah = (val: number) => `Rp ${val.toLocaleString('id-ID')}`;
     const isFiltered = selectedOutlet !== null;
@@ -183,6 +185,20 @@ export const Dashboard = () => {
         }
     };
 
+    const fetchInventoryMutations = async (date: string) => {
+        try {
+            const { data } = await supabase
+                .from('inventory_mutations')
+                .select('*')
+                .eq('report_date', date)
+                .gt('quantity', 0)
+                .order('created_at', { ascending: false });
+            setMutations(data || []);
+        } catch (err) {
+            console.error('Error fetching inventory mutations:', err);
+        }
+    };
+
     useEffect(() => {
         fetchLocalSales(selectedDate);
     }, [selectedDate]);
@@ -211,6 +227,7 @@ export const Dashboard = () => {
         fetchStockMenipis();
         fetchStaffProfiles();
         fetchStaffExpenses(selectedDate);
+        fetchInventoryMutations(selectedDate);
     }, [selectedDate]);
 
     const handleRefresh = async () => {
@@ -235,6 +252,7 @@ export const Dashboard = () => {
             fetchPackagingReports(selectedDate),
             fetchStockMenipis(),
             fetchStaffExpenses(selectedDate),
+            fetchInventoryMutations(selectedDate),
         ]);
         setIsRefreshing(false);
     };
@@ -302,6 +320,8 @@ export const Dashboard = () => {
     const omsetCash = totals.tunai;
     const omsetOnline = totals.gojek + totals.grab + totals.shoppe + totals.qris;
     const totalTransaksi = isFiltered ? filteredSales.length : filteredSales.length + localTx.length;
+    const totalExpensesAmount = filteredExpenses.reduce((s, e) => s + Number(e.amount), 0);
+    const omsetCashBersih = Math.max(0, omsetCash - totalExpensesAmount);
 
     // Produk Terjual breakdown per metode bayar
     const produkTerjualList = useMemo(() => {
@@ -328,8 +348,6 @@ export const Dashboard = () => {
         }
         return Array.from(map.entries()).map(([name, vals]) => ({ name, ...vals })).sort((a, b) => b.total - a.total);
     }, [filteredSales, localTx, isFiltered]);
-
-    const topProducts = produkTerjualList.slice(0, 5);
 
     // Per-Staff data (only for unfiltered)
     const staffMap = new Map<string, StaffSummary>();
@@ -446,9 +464,9 @@ export const Dashboard = () => {
                         {/* KPI Cards */}
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4">
                             <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-gray-100">
-                                <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Omset Cash</p>
-                                <p className="text-lg sm:text-2xl font-bold text-green-600 mt-1">{formatRupiah(omsetCash)}</p>
-                                <p className="text-[10px] text-gray-400">Pembayaran Tunai</p>
+                                <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Omset Cash Bersih</p>
+                                <p className="text-lg sm:text-2xl font-bold text-green-600 mt-1">{formatRupiah(omsetCashBersih)}</p>
+                                <p className="text-[10px] text-gray-400">Tunai dikurangi pengeluaran staff</p>
                             </div>
                             <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-gray-100">
                                 <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Omset Online</p>
@@ -500,12 +518,18 @@ export const Dashboard = () => {
                         </div>
 
                         {/* Produk Terjual breakdown per metode bayar */}
-                        {produkTerjualList.length > 0 && (
+                        {produkTerjualList.length > 0 && (() => {
+                            const isCollapsed = collapsedSections.has('produkTerjual');
+                            return (
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
-                                <div className="px-4 sm:px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-                                    <h3 className="font-bold text-gray-900 text-sm sm:text-base">Produk Terjual — Per Metode Pembayaran</h3>
-                                    <p className="text-xs text-gray-500">Jumlah pcs terjual per produk berdasarkan metode bayar</p>
-                                </div>
+                                <button onClick={() => { const n = new Set(collapsedSections); if (n.has('produkTerjual')) n.delete('produkTerjual'); else n.add('produkTerjual'); setCollapsedSections(n); }}
+                                    className="w-full px-4 sm:px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center gap-2 hover:bg-gray-100/50 transition-colors cursor-pointer text-left"
+                                >
+                                    {isCollapsed ? <FaChevronRight className="text-gray-400 text-xs" /> : <FaChevronDown className="text-gray-400 text-xs" />}
+                                    <h3 className="font-bold text-gray-900 text-sm sm:text-base flex-1">Produk Terjual — Per Metode Pembayaran</h3>
+                                    {!isCollapsed && <span className="text-xs text-gray-400 font-normal">{produkTerjualList.length} produk</span>}
+                                </button>
+                                {!isCollapsed && (
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left">
                                         <thead className="bg-gray-50/50 border-b border-gray-100">
@@ -540,16 +564,25 @@ export const Dashboard = () => {
                                         </tfoot>
                                     </table>
                                 </div>
+                                )}
                             </div>
-                        )}
+                            );
+                        })()}
 
                         {/* Packaging per Staff */}
-                        {packagingByOutlet.size > 0 && (
+                        {packagingByOutlet.size > 0 && (() => {
+                            const isCollapsed = collapsedSections.has('packaging');
+                            return (
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
-                                <div className="px-4 sm:px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-                                    <h3 className="font-bold text-gray-900 text-sm sm:text-base">Penggunaan Packaging Per Staff</h3>
-                                    <p className="text-xs text-gray-500">Stock packaging yang dilaporkan staff hari ini</p>
-                                </div>
+                                <button onClick={() => { const n = new Set(collapsedSections); if (n.has('packaging')) n.delete('packaging'); else n.add('packaging'); setCollapsedSections(n); }}
+                                    className="w-full px-4 sm:px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center gap-2 hover:bg-gray-100/50 transition-colors cursor-pointer text-left"
+                                >
+                                    {isCollapsed ? <FaChevronRight className="text-gray-400 text-xs" /> : <FaChevronDown className="text-gray-400 text-xs" />}
+                                    <h3 className="font-bold text-gray-900 text-sm sm:text-base flex-1">Penggunaan Packaging Per Staff</h3>
+                                    {!isCollapsed && <span className="text-xs text-gray-400 font-normal">{packagingByOutlet.size} outlet</span>}
+                                </button>
+                                {!isCollapsed && (
+                                <>
                                 {Array.from(packagingByOutlet.entries()).sort().map(([outlet, reports]) => {
                                     const totalPerOutlet = reports.reduce((s, r) => s + r.terpakai, 0);
                                     return (
@@ -586,16 +619,25 @@ export const Dashboard = () => {
                                         </div>
                                     );
                                 })}
+                                </>
+                                )}
                             </div>
-                        )}
+                            );
+                        })()}
 
                         {/* Pengeluaran Staff table */}
-                        {filteredExpenses.length > 0 && (
+                        {filteredExpenses.length > 0 && (() => {
+                            const isCollapsed = collapsedSections.has('expenses');
+                            return (
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
-                                <div className="px-4 sm:px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-                                    <h3 className="font-bold text-gray-900 text-sm sm:text-base"><FaMoneyBillWave className="inline mr-1.5 text-green-500" />Pengeluaran Staff</h3>
-                                    <p className="text-xs text-gray-500">Total: <span className="font-semibold text-gray-900">{formatRupiah(filteredExpenses.reduce((s, e) => s + Number(e.amount), 0))}</span></p>
-                                </div>
+                                <button onClick={() => { const n = new Set(collapsedSections); if (n.has('expenses')) n.delete('expenses'); else n.add('expenses'); setCollapsedSections(n); }}
+                                    className="w-full px-4 sm:px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center gap-2 hover:bg-gray-100/50 transition-colors cursor-pointer text-left"
+                                >
+                                    {isCollapsed ? <FaChevronRight className="text-gray-400 text-xs" /> : <FaChevronDown className="text-gray-400 text-xs" />}
+                                    <h3 className="font-bold text-gray-900 text-sm sm:text-base flex-1"><FaMoneyBillWave className="inline mr-1.5 text-green-500" />Pengeluaran Staff</h3>
+                                    {!isCollapsed && <span className="text-xs text-gray-400 font-normal">{formatRupiah(filteredExpenses.reduce((s, e) => s + Number(e.amount), 0))}</span>}
+                                </button>
+                                {!isCollapsed && (
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left">
                                         <thead className="bg-gray-50/50 border-b border-gray-100">
@@ -623,55 +665,68 @@ export const Dashboard = () => {
                                         </tfoot>
                                     </table>
                                 </div>
-                            </div>
-                        )}
-
-                        {/* Payment Breakdown + Top 5 Products */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                                <div className="px-4 sm:px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-                                    <h3 className="font-bold text-gray-900 text-sm sm:text-base">Metode Pembayaran</h3>
-                                </div>
-                                <div className="p-4 sm:p-6 space-y-3">
-                                    {paymentColumns.map((pm) => {
-                                        const val = (totals as any)[pm.key] || 0;
-                                        const pct = totalOmset > 0 ? (val / totalOmset) * 100 : 0;
-                                        return (
-                                            <div key={pm.key}>
-                                                <div className="flex justify-between text-sm mb-1">
-                                                    <span className="font-medium text-gray-700">{pm.label}</span>
-                                                    <span className="text-gray-900 font-semibold">{formatRupiah(val)} <span className="text-gray-400 font-normal">({pct.toFixed(1)}%)</span></span>
-                                                </div>
-                                                <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                                                    <div className={`${pm.bg} h-2.5 rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                                <div className="px-4 sm:px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-                                    <h3 className="font-bold text-gray-900 text-sm sm:text-base">Top 5 Produk Terjual</h3>
-                                </div>
-                                {topProducts.length === 0 ? (
-                                    <div className="p-6 text-center text-gray-400 text-sm">Belum ada data produk terjual hari ini.</div>
-                                ) : (
-                                    <div className="divide-y divide-gray-50">
-                                        {topProducts.map((p, i) => (
-                                            <div key={p.name} className="px-4 sm:px-6 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors">
-                                                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${i === 0 ? 'bg-yellow-500' : i === 1 ? 'bg-gray-400' : i === 2 ? 'bg-amber-700' : 'bg-gray-300'}`}>{i + 1}</span>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-semibold text-gray-900 truncate">{p.name}</p>
-                                                    <p className="text-xs text-gray-400">{p.total} pcs terjual</p>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
                                 )}
                             </div>
-                        </div>
+                            );
+                        })()}
+
+                        {/* Riwayat Pemakaian Bahan */}
+                        {mutations.length > 0 && (() => {
+                            const isCollapsed = collapsedSections.has('riwayatBahan');
+                            const byOutlet = mutations.reduce((acc: Record<string, any[]>, r: any) => {
+                                const outlet = r.outlet || 'Unknown';
+                                if (!acc[outlet]) acc[outlet] = [];
+                                acc[outlet].push(r);
+                                return acc;
+                            }, {});
+                            return (
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+                                <button onClick={() => { const n = new Set(collapsedSections); if (n.has('riwayatBahan')) n.delete('riwayatBahan'); else n.add('riwayatBahan'); setCollapsedSections(n); }}
+                                    className="w-full px-4 sm:px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center gap-2 hover:bg-gray-100/50 transition-colors cursor-pointer text-left"
+                                >
+                                    {isCollapsed ? <FaChevronRight className="text-gray-400 text-xs" /> : <FaChevronDown className="text-gray-400 text-xs" />}
+                                    <h3 className="font-bold text-gray-900 text-sm sm:text-base flex-1"><FaHistory className="inline mr-1.5 text-orange-500" />Riwayat Pemakaian Bahan</h3>
+                                    {!isCollapsed && <span className="text-xs text-gray-400 font-normal">{mutations.length} item</span>}
+                                </button>
+                                {!isCollapsed && (
+                                <>
+                                {Object.entries(byOutlet).sort(([a], [b]) => a.localeCompare(b)).map(([outlet, items]) => (
+                                    <div key={outlet} className="border-b border-gray-50 last:border-b-0">
+                                        <div className="px-4 sm:px-6 py-3 flex items-center justify-between bg-gray-50/30">
+                                            <span className="font-bold text-gray-900 text-sm">{outlet}</span>
+                                            <span className="text-xs text-gray-500">{items.length} item</span>
+                                        </div>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-left">
+                                                <thead className="bg-gray-50/50">
+                                                    <tr>
+                                                        <th className="px-4 sm:px-6 py-2.5 text-xs font-bold text-gray-500 uppercase tracking-wider">Item</th>
+                                                        <th className="px-3 py-2.5 text-xs font-bold text-gray-500 uppercase text-right">Stok Awal</th>
+                                                        <th className="px-3 py-2.5 text-xs font-bold text-gray-500 uppercase text-right">Terpakai</th>
+                                                        <th className="px-3 py-2.5 text-xs font-bold text-gray-500 uppercase text-right">Stok Akhir</th>
+                                                        <th className="px-3 py-2.5 text-xs font-bold text-gray-500 uppercase text-right">Waktu</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-50">
+                                                    {items.map((r: any) => (
+                                                        <tr key={r.id} className="hover:bg-gray-50 transition-colors">
+                                                            <td className="px-4 sm:px-6 py-2.5 text-sm font-medium text-gray-900">{r.item_name}</td>
+                                                            <td className="px-3 py-2.5 text-right text-sm text-gray-700">{r.stock_before}</td>
+                                                            <td className="px-3 py-2.5 text-right text-sm font-bold text-orange-600">{r.quantity}</td>
+                                                            <td className="px-3 py-2.5 text-right text-sm text-green-600 font-semibold">{r.stock_after}</td>
+                                                            <td className="px-3 py-2.5 text-right text-xs text-gray-400">{new Date(r.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                ))}
+                                </>
+                                )}
+                            </div>
+                            );
+                        })()}
 
                         {/* Full sections — only for "Semua Outlet" */}
                         {!isFiltered && (
