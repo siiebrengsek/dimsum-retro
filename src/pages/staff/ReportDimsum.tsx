@@ -90,7 +90,6 @@ export const ReportDimsum = () => {
     const [packagingItems, setPackagingItems] = useState<PackagingItem[]>([]);
     const [isPackagingLoading, setIsPackagingLoading] = useState(true);
     const [isPackagingSubmitting, setIsPackagingSubmitting] = useState(false);
-    const [packagingConfirmOpen, setPackagingConfirmOpen] = useState(false);
     const [showHistory, setShowHistory] = useState(false);
     const [stockHariIni, setStockHariIni] = useState<LocalData>({});
     const [sisa, setSisa] = useState<LocalData>({});
@@ -386,11 +385,6 @@ export const ReportDimsum = () => {
         const hariIni = Number(stockHariIni[id]) || 0;
         const sisaVal = Number(sisa[id]) || 0;
         return Math.max(0, hariIni - sisaVal);
-    };
-
-    const handleKirimPackagingLaporan = () => {
-        if (!user) return;
-        setPackagingConfirmOpen(true);
     };
 
     const processPackagingLaporan = async () => {
@@ -723,44 +717,25 @@ export const ReportDimsum = () => {
                 )}
             </div>
 
-            <div className="mt-6">
-                <button
-                    onClick={handleKirimPackagingLaporan}
-                    disabled={isPackagingSubmitting || isPackagingLoading}
-                    className="w-full bg-[#FF6B6B] text-white font-bold py-3.5 px-4 rounded-xl shadow-[0_4px_8px_rgba(255,107,107,0.3)] hover:bg-red-500 disabled:opacity-50 transition min-h-[48px] text-base"
-                >
-                    {isPackagingSubmitting ? 'Mengirim...' : 'Kirim Laporan Packaging ke Warehouse'}
-                </button>
-            </div>
-
-            {/* Fixed Bottom Button — Dimsum Report */}
+            {/* Fixed Bottom Button — Kirim Laporan */}
             <div className="fixed bottom-0 left-0 right-0 lg:left-72 bg-[#0D0D0D] border-t border-[#1A1A2E] p-4 pointer-events-none">
                 <button
                     onClick={handleKirimLaporan}
-                    disabled={isSubmitting || isLoading}
+                    disabled={isSubmitting || isPackagingSubmitting || isLoading || isPackagingLoading}
                     className="w-full bg-[#F5A623] text-white font-bold py-3.5 px-4 rounded-xl shadow-[0_4px_8px_rgba(245,166,35,0.3)] pointer-events-auto hover:bg-orange-600 disabled:opacity-50 transition min-h-[48px] text-base"
                 >
-                    {isSubmitting ? 'Mengirim...' : 'Kirim Laporan ke Admin'}
+                    {isSubmitting || isPackagingSubmitting ? 'Mengirim...' : 'Kirim Laporan ke Admin'}
                 </button>
             </div>
 
             <ConfirmModal
                 open={confirmOpen}
                 title="Kirim Laporan"
-                message="Laporan sisa dimsum akan dikirim ke Admin Warehouse. Lanjutkan?"
+                message="Laporan sisa dimsum dan stock packaging akan dikirim ke Admin Warehouse. Lanjutkan?"
                 confirmLabel="Ya, Kirim"
                 cancelLabel="Batal"
-                onConfirm={() => { setConfirmOpen(false); processLaporan(); }}
+                onConfirm={() => { setConfirmOpen(false); processLaporan(); processPackagingLaporan(); }}
                 onCancel={() => setConfirmOpen(false)}
-            />
-            <ConfirmModal
-                open={packagingConfirmOpen}
-                title="Kirim Laporan Stock"
-                message="Laporan stock packaging hari ini akan dikirim ke Warehouse. Data akan direset setelah dikirim. Lanjutkan?"
-                confirmLabel="Ya, Kirim"
-                cancelLabel="Batal"
-                onConfirm={() => { setPackagingConfirmOpen(false); processPackagingLaporan(); }}
-                onCancel={() => setPackagingConfirmOpen(false)}
             />
             <AlertModal
                 open={!!alert}
