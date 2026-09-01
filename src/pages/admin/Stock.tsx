@@ -471,58 +471,90 @@ export const Stock = () => {
                                         <span className="text-sm font-semibold text-gray-700">Tanggal: {date}</span>
                                         <span className="text-xs text-gray-500 ml-2">({dateReports.length} produk — menampilkan laporan terbaru per produk/outlet)</span>
                                     </div>
-                                    <div className="hidden sm:block overflow-x-auto">
-                                        <table className="w-full text-left border-collapse">
-                                            <thead>
-                                                <tr className="bg-gray-50/30">
-                                                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Produk</th>
-                                                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Stok Bawaan</th>
-                                                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Sisa</th>
-                                                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Terjual</th>
-                                                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Outlet</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-50">
-                                                {dateReports.map((report) => (
-                                                    <tr key={report.id} className="hover:bg-gray-50 transition-colors">
-                                                        <td className="px-6 py-3 font-medium text-gray-900">{report.product_name}</td>
-                                                        <td className="px-6 py-3 text-gray-700">{report.stock_bawaan}</td>
-                                                        <td className="px-6 py-3 text-gray-700">{report.sisa_dimsum}</td>
-                                                        <td className="px-6 py-3">
-                                                            <span className="font-semibold text-primary-600">{report.terjual}</span>
-                                                        </td>
-                                                        <td className="px-6 py-3 text-sm text-gray-500">
-                                                            {report.profiles?.outlet || '-'}
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <div className="sm:hidden divide-y divide-gray-50">
-                                        {dateReports.map((report) => (
-                                            <div key={report.id} className="p-4">
-                                                <div className="flex justify-between items-start mb-2">
-                                                    <span className="font-bold text-gray-900 text-sm">{report.product_name}</span>
-                                                    <span className="text-xs text-gray-500">{report.profiles?.outlet || '-'}</span>
+                                    {(() => {
+                                        const totalBawaan = dateReports.reduce((s, r) => s + (Number(r.stock_bawaan) || 0), 0);
+                                        const totalSisa = dateReports.reduce((s, r) => s + (Number(r.sisa_dimsum) || 0), 0);
+                                        const totalTerjual = dateReports.reduce((s, r) => s + (Number(r.terjual) || 0), 0);
+                                        return (
+                                            <>
+                                                <div className="hidden sm:block overflow-x-auto">
+                                                    <table className="w-full text-left border-collapse">
+                                                        <thead>
+                                                            <tr className="bg-gray-50/30">
+                                                                <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Produk</th>
+                                                                <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Stok Bawaan</th>
+                                                                <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Sisa</th>
+                                                                <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Terjual</th>
+                                                                <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Outlet</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-gray-50">
+                                                            {dateReports.map((report) => (
+                                                                <tr key={report.id} className="hover:bg-gray-50 transition-colors">
+                                                                    <td className="px-6 py-3 font-medium text-gray-900">{report.product_name}</td>
+                                                                    <td className="px-6 py-3 text-gray-700">{report.stock_bawaan}</td>
+                                                                    <td className="px-6 py-3 text-gray-700">{report.sisa_dimsum}</td>
+                                                                    <td className="px-6 py-3">
+                                                                        <span className="font-semibold text-primary-600">{report.terjual}</span>
+                                                                    </td>
+                                                                    <td className="px-6 py-3 text-sm text-gray-500">
+                                                                        {report.profiles?.outlet || '-'}
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                        <tfoot>
+                                                            <tr className="bg-primary-50/70 border-t-2 border-primary-100 font-bold">
+                                                                <td className="px-6 py-3 text-gray-900">TOTAL</td>
+                                                                <td className="px-6 py-3 text-gray-900">{totalBawaan}</td>
+                                                                <td className="px-6 py-3 text-gray-900">{totalSisa}</td>
+                                                                <td className="px-6 py-3 text-primary-700">{totalTerjual}</td>
+                                                                <td className="px-6 py-3 text-sm text-gray-500">—</td>
+                                                            </tr>
+                                                        </tfoot>
+                                                    </table>
                                                 </div>
-                                                <div className="grid grid-cols-3 gap-2 text-center text-sm">
-                                                    <div>
-                                                        <div className="text-xs text-gray-500">Stok Bawaan</div>
-                                                        <div className="font-semibold">{report.stock_bawaan}</div>
-                                                    </div>
-                                                    <div>
-                                                        <div className="text-xs text-gray-500">Sisa</div>
-                                                        <div className="font-semibold">{report.sisa_dimsum}</div>
-                                                    </div>
-                                                    <div>
-                                                        <div className="text-xs text-gray-500">Terjual</div>
-                                                        <div className="font-semibold text-primary-600">{report.terjual}</div>
+                                                <div className="sm:hidden divide-y divide-gray-50">
+                                                    {dateReports.map((report) => (
+                                                        <div key={report.id} className="p-4">
+                                                            <div className="flex justify-between items-start mb-2">
+                                                                <span className="font-bold text-gray-900 text-sm">{report.product_name}</span>
+                                                                <span className="text-xs text-gray-500">{report.profiles?.outlet || '-'}</span>
+                                                            </div>
+                                                            <div className="grid grid-cols-3 gap-2 text-center text-sm">
+                                                                <div>
+                                                                    <div className="text-xs text-gray-500">Stok Bawaan</div>
+                                                                    <div className="font-semibold">{report.stock_bawaan}</div>
+                                                                </div>
+                                                                <div>
+                                                                    <div className="text-xs text-gray-500">Sisa</div>
+                                                                    <div className="font-semibold">{report.sisa_dimsum}</div>
+                                                                </div>
+                                                                <div>
+                                                                    <div className="text-xs text-gray-500">Terjual</div>
+                                                                    <div className="font-semibold text-primary-600">{report.terjual}</div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                    <div className="p-4 bg-primary-50/70 border-t-2 border-primary-100 grid grid-cols-3 gap-2 text-center text-sm font-bold">
+                                                        <div>
+                                                            <div className="text-xs text-gray-500 font-medium">Total Bawaan</div>
+                                                            <div className="text-gray-900">{totalBawaan}</div>
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-xs text-gray-500 font-medium">Total Sisa</div>
+                                                            <div className="text-gray-900">{totalSisa}</div>
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-xs text-gray-500 font-medium">Total Terjual</div>
+                                                            <div className="text-primary-700">{totalTerjual}</div>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        ))}
-                                    </div>
+                                            </>
+                                        );
+                                    })()}
                                 </div>
                             ))}
                         </div>
